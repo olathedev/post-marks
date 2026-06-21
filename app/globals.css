@@ -8,19 +8,135 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-hemis: var(--font-hemis);
+  --font-dm-sans: var(--font-dm-sans);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
     --background: #0a0a0a;
-    --foreground: #ededed;
+    --foreground: #ffffff;
   }
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  position: relative;
+  background-image: radial-gradient(circle, rgba(209, 213, 219, 0.7) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  background: radial-gradient(circle at center, white 30%, transparent 70%);
+  pointer-events: none;
+}
+
+body > * {
+  position: relative;
+  z-index: 2;
+}
+
+.line-input-wrapper {
+  position: relative;
+}
+
+.line-input-wrapper::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 0;
+  height: 2px;
+  background: #db2777;
+  transition: width 0.3s ease;
+}
+
+.line-input-wrapper:focus-within::after {
+  width: 100%;
+}
+
+.starburst {
+  clip-path: polygon(
+    50% 0%, 56.5% 25.9%, 75% 6.7%, 67.7% 32.3%,
+    93.3% 25%, 74.1% 43.5%, 100% 50%, 74.1% 56.5%,
+    93.3% 75%, 67.7% 67.7%, 75% 93.3%, 56.5% 74.1%,
+    50% 100%, 43.5% 74.1%, 25% 93.3%, 32.3% 67.7%,
+    6.7% 75%, 25.9% 56.5%, 0% 50%, 25.9% 43.5%,
+    6.7% 25%, 32.3% 32.3%, 25% 6.7%, 43.5% 25.9%
+  );
+  background: linear-gradient(135deg, #fb923c, #ec4899, #db2777);
+  animation: spin 10s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.shader-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: 16px;
+  border: 1px solid #e5e7eb;
+  background: white;
+  transition: all 0.3s ease;
+}
+
+.shader-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  background:
+    radial-gradient(circle at 15% 5%, rgba(251, 146, 60, 0.35) 0%, transparent 45%),
+    radial-gradient(circle at 85% 25%, rgba(219, 39, 119, 0.3) 0%, transparent 45%),
+    radial-gradient(circle at 40% 95%, rgba(168, 85, 247, 0.25) 0%, transparent 45%);
+  transition: opacity 0.4s ease;
+  z-index: 0;
+}
+
+.shader-card::after {
+  content: "";
+  position: absolute;
+  inset: -20px;
+  opacity: 0;
+  background:
+    radial-gradient(circle at 60% 40%, rgba(236, 72, 153, 0.2) 0%, transparent 50%),
+    radial-gradient(circle at 30% 70%, rgba(139, 92, 246, 0.15) 0%, transparent 50%);
+  filter: blur(25px);
+  transition: opacity 0.4s ease;
+  z-index: 0;
+  animation: shader-breathe 4s ease-in-out infinite;
+}
+
+.shader-card.active {
+  border-color: transparent;
+  box-shadow: 0 0 0 1.5px rgba(219, 39, 119, 0.3), 0 4px 20px rgba(219, 39, 119, 0.08);
+}
+
+.shader-card.active::before {
+  opacity: 1;
+}
+
+.shader-card.active::after {
+  opacity: 1;
+}
+
+.shader-card > * {
+  position: relative;
+  z-index: 1;
+}
+
+@keyframes shader-breathe {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(10px, -5px) scale(1.1); }
+}
+
+@keyframes waveform {
+  0% { height: 15%; }
+  100% { height: 85%; }
 }
