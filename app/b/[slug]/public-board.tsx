@@ -253,7 +253,7 @@ export function PublicBoard({ board, creator }: { board: Board; creator: Creator
                     placeholder="Type your message..."
                     rows={4}
                     autoFocus
-                    className="flex-1 resize-none bg-transparent text-sm leading-relaxed text-gray-800 outline-none placeholder:text-gray-400"
+                    className="flex-1 resize-none bg-transparent text-base leading-relaxed text-gray-800 outline-none placeholder:text-gray-400"
                     style={{ fontFamily: board.font }}
                     maxLength={500}
                   />
@@ -292,7 +292,7 @@ export function PublicBoard({ board, creator }: { board: Board; creator: Creator
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Your name (optional)"
-                className="mb-4 w-full border-b border-gray-200 bg-transparent py-2.5 text-sm text-gray-900 outline-none placeholder:text-gray-300"
+                className="mb-4 w-full border-b border-gray-200 bg-transparent py-2.5 text-base text-gray-900 outline-none placeholder:text-gray-300"
               />
 
               {/* Submit */}

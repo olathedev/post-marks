@@ -115,7 +115,7 @@ export default async function DashboardLayout({
   );
 
   return (
-    <div className="flex h-screen bg-white">
+    <div className="flex h-screen overflow-hidden bg-white">
       {/* Desktop sidebar */}
       <aside className="hidden md:flex w-56 flex-col border-r border-gray-100 bg-gray-50/60 px-3 py-4">
         {sidebarContent}
