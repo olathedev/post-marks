@@ -20,17 +20,16 @@ const cardColors = [
 ];
 
 const initialCards: Card[] = [
-  { id: 1, text: "Congratulations! So proud of everything you've achieved.", author: "Sarah", color: cardColors[0], x: 5, y: 8, rotation: -4, width: 180 },
-  { id: 2, text: "", author: "Anonymous", color: cardColors[1], x: 30, y: 5, rotation: 2, width: 140, drawing: "M20,40 C25,10 45,10 50,40 C55,10 75,10 80,40 L50,70 Z" },
-  { id: 3, text: "Wishing you all the best on this new chapter of your life!", author: "James", color: cardColors[2], x: 55, y: 12, rotation: -2, width: 190 },
-  { id: 4, text: "how did you get this good bruv..this is excellence", author: "Anonymous", color: cardColors[0], x: 15, y: 35, rotation: 3, width: 170 },
-  { id: 5, text: "Super cool idea!", author: "Anonymous", color: cardColors[3], x: 60, y: 30, rotation: -5, width: 150 },
-  { id: 6, text: "", author: "Ola", color: cardColors[1], x: 35, y: 50, rotation: 1, width: 180, drawing: "M15,50 Q30,20 50,50 Q70,80 85,50 M25,35 C30,25 40,25 45,35 M55,35 C60,25 70,25 75,35" },
-  { id: 7, text: "Cut Soap for me", author: "Anonymous", color: cardColors[3], x: 8, y: 58, rotation: -3, width: 160 },
-  { id: 8, text: "", author: "frank", color: cardColors[4], x: 50, y: 55, rotation: 4, width: 155, drawing: "M30,70 L50,20 L70,70 M38,50 L62,50 M50,70 L50,85" },
-  { id: 9, text: "heyy", author: "Anonymous", color: cardColors[5], x: 72, y: 48, rotation: -1, width: 120 },
-  { id: 10, text: "Y'all cooked. This is amazing!", author: "Anonymous", color: cardColors[1], x: 25, y: 72, rotation: 2, width: 185 },
-  { id: 11, text: "", author: "Anonymous", color: cardColors[6], x: 58, y: 75, rotation: -4, width: 150, drawing: "M25,60 Q50,15 75,60 M35,55 Q50,30 65,55 M45,50 Q50,40 55,50" },
+  { id: 1, text: "Congratulations! So proud of everything you've achieved.", author: "Sarah", color: cardColors[0], x: 3, y: 2, rotation: -3, width: 160 },
+  { id: 2, text: "", author: "Anonymous", color: cardColors[1], x: 35, y: 0, rotation: 2, width: 120, drawing: "M20,40 C25,10 45,10 50,40 C55,10 75,10 80,40 L50,70 Z" },
+  { id: 3, text: "Wishing you all the best on this new chapter of your life!", author: "James", color: cardColors[2], x: 60, y: 3, rotation: -2, width: 160 },
+  { id: 4, text: "how did you get this good bruv..this is excellence", author: "Anonymous", color: cardColors[0], x: 8, y: 28, rotation: 3, width: 155 },
+  { id: 5, text: "Super cool idea!", author: "Anonymous", color: cardColors[3], x: 55, y: 26, rotation: -4, width: 135 },
+  { id: 6, text: "Cut Soap for me", author: "Anonymous", color: cardColors[3], x: 3, y: 52, rotation: -2, width: 145 },
+  { id: 7, text: "", author: "Ola", color: cardColors[1], x: 33, y: 50, rotation: 1, width: 120, drawing: "M15,50 Q30,20 50,50 Q70,80 85,50 M25,35 C30,25 40,25 45,35 M55,35 C60,25 70,25 75,35" },
+  { id: 8, text: "Y'all cooked. This is amazing!", author: "Anonymous", color: cardColors[1], x: 58, y: 53, rotation: 2, width: 155 },
+  { id: 9, text: "heyy", author: "Anonymous", color: cardColors[5], x: 30, y: 76, rotation: -1, width: 110 },
+  { id: 10, text: "", author: "Anonymous", color: cardColors[6], x: 55, y: 75, rotation: -3, width: 120, drawing: "M25,60 Q50,15 75,60 M35,55 Q50,30 65,55 M45,50 Q50,40 55,50" },
 ];
 
 export function DraggableCards({ font, topOffset = 100 }: { font: string; topOffset?: number }) {
@@ -96,12 +95,12 @@ export function DraggableCards({ font, topOffset = 100 }: { font: string; topOff
         <div
           key={card.id}
           onMouseDown={(e) => handleMouseDown(e, card)}
-          className="absolute flex cursor-grab select-none flex-col justify-between p-4 shadow-md transition-shadow active:cursor-grabbing active:shadow-xl"
+          className="absolute flex cursor-grab select-none flex-col justify-between rounded-sm p-3.5 shadow-sm transition-shadow active:cursor-grabbing active:shadow-lg"
           style={{
             left: `${card.x}%`,
             top: `${card.y}%`,
             width: card.width,
-            minHeight: 140,
+            minHeight: 115,
             backgroundColor: card.color,
             transform: `rotate(${card.rotation}deg)`,
             zIndex: zMap[card.id] ?? 1,
@@ -114,10 +113,10 @@ export function DraggableCards({ font, topOffset = 100 }: { font: string; topOff
                 <path d={card.drawing} stroke="#1e293b" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             ) : (
-              <p className="text-sm leading-snug text-gray-800">{card.text}</p>
+              <p className="text-[13px] leading-snug text-gray-800">{card.text}</p>
             )}
           </div>
-          <p className="mt-3 text-xs text-gray-500">{card.author}</p>
+          <p className="mt-2 text-[11px] text-gray-400">{card.author}</p>
         </div>
       ))}
     </div>

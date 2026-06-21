@@ -41,7 +41,7 @@ export function BoardPreview({
         />
 
         {/* Board title header */}
-        <div className="absolute left-0 right-0 top-14 z-20 px-6 py-4 text-center">
+        <div className="absolute left-0 right-0 top-16 z-20 px-8 py-4 text-center">
           <h2
             style={{
               fontFamily: theme.titleFont,
@@ -56,7 +56,7 @@ export function BoardPreview({
           </h2>
           {(description || !title) && (
             <p
-              className="mt-1 text-sm"
+              className="mt-1.5 text-sm"
               style={{
                 fontFamily: theme.titleFont,
                 color: theme.subtitleColor,
@@ -67,7 +67,7 @@ export function BoardPreview({
           )}
         </div>
 
-        <DraggableCards font={font} topOffset={90} />
+        <DraggableCards font={font} topOffset={130} />
       </div>
     </div>
   );

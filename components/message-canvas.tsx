@@ -1,0 +1,304 @@
+"use client";
+
+import { useState, useRef, useEffect, useCallback } from "react";
+import { Minus, Plus } from "@phosphor-icons/react";
+import {
+  motion,
+  useMotionValue,
+  useSpring,
+  useTransform,
+  animate,
+} from "motion/react";
+import { StrokeRenderer } from "./drawing-canvas";
+import type { Message } from "@/lib/types";
+
+type CardPos = { x: number; y: number; rot: number; w: number };
+
+const CANVAS_W = 4000;
+const CANVAS_H = 3000;
+
+function layoutCards(count: number): { positions: CardPos[]; width: number; height: number } {
+  if (count === 0) return { positions: [], width: CANVAS_W, height: CANVAS_H };
+
+  const cardW = 200;
+  const cardH = 170;
+  const overlapX = 60;
+  const overlapY = 40;
+
+  const cols = Math.ceil(Math.sqrt(count * 1.4));
+  const rows = Math.ceil(count / cols);
+
+  const stepX = cardW - overlapX;
+  const stepY = cardH - overlapY;
+
+  const gridW = cols * stepX + cardW;
+  const gridH = rows * stepY + cardH;
+
+  // Center the grid on the canvas
+  const offsetX = (CANVAS_W - gridW) / 2;
+  const offsetY = (CANVAS_H - gridH) / 2;
+
+  const positions: CardPos[] = [];
+
+  for (let i = 0; i < count; i++) {
+    const col = i % cols;
+    const row = Math.floor(i / cols);
+
+    const baseX = offsetX + col * stepX;
+    const baseY = offsetY + row * stepY;
+
+    const jX = (Math.random() - 0.5) * 40;
+    const jY = (Math.random() - 0.5) * 30;
+
+    positions.push({
+      x: baseX + jX,
+      y: baseY + jY,
+      rot: Math.round((Math.random() - 0.5) * 10),
+      w: 180 + Math.floor(Math.random() * 40),
+    });
+  }
+
+  return { positions, width: CANVAS_W, height: CANVAS_H };
+}
+
+export function MessageCanvas({
+  messages,
+  font,
+}: {
+  messages: Message[];
+  font: string;
+}) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
+  const [spaceHeld, setSpaceHeld] = useState(false);
+  const [zoom, setZoom] = useState(1.4);
+
+  const layoutRef = useRef<{ count: number; data: ReturnType<typeof layoutCards> } | null>(null);
+
+  if (!layoutRef.current || layoutRef.current.count !== messages.length) {
+    const prev = layoutRef.current?.data.positions ?? [];
+    const next = layoutCards(messages.length);
+    // Preserve existing card positions, only generate for new ones
+    for (let i = 0; i < Math.min(prev.length, next.positions.length); i++) {
+      next.positions[i] = prev[i];
+    }
+    layoutRef.current = { count: messages.length, data: next };
+  }
+
+  const { positions, width: canvasW, height: canvasH } = layoutRef.current.data;
+
+  const panX = useMotionValue(0);
+  const panY = useMotionValue(0);
+  const smoothX = useSpring(panX, { stiffness: 300, damping: 40 });
+  const smoothY = useSpring(panY, { stiffness: 300, damping: 40 });
+
+  const scaleVal = useMotionValue(1.4);
+  const smoothScale = useSpring(scaleVal, { stiffness: 300, damping: 30 });
+
+  // Center on mount
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    const cx = -(canvasW / 2 - rect.width / 2);
+    const cy = -(canvasH / 2 - rect.height / 2);
+    panX.set(cx);
+    panY.set(cy);
+  }, [canvasW, canvasH, panX, panY]);
+
+  // Prevent browser back/forward swipe gestures
+  useEffect(() => {
+    document.body.style.overscrollBehavior = "none";
+    document.documentElement.style.overscrollBehavior = "none";
+    return () => {
+      document.body.style.overscrollBehavior = "";
+      document.documentElement.style.overscrollBehavior = "";
+    };
+  }, []);
+
+  // Space key
+  useEffect(() => {
+    const down = (e: KeyboardEvent) => {
+      if (e.code === "Space" && !e.repeat && !(e.target as HTMLElement).closest("input,textarea")) {
+        e.preventDefault();
+        setSpaceHeld(true);
+      }
+    };
+    const up = (e: KeyboardEvent) => {
+      if (e.code === "Space") setSpaceHeld(false);
+    };
+    window.addEventListener("keydown", down);
+    window.addEventListener("keyup", up);
+    return () => {
+      window.removeEventListener("keydown", down);
+      window.removeEventListener("keyup", up);
+    };
+  }, []);
+
+  // Pan via drag
+  const dragStart = useRef<{ x: number; y: number; px: number; py: number } | null>(null);
+  const isPanning = useRef(false);
+
+  const handleMouseDown = useCallback(
+    (e: React.MouseEvent) => {
+      if (e.button !== 0) return;
+      e.preventDefault();
+      isPanning.current = true;
+      dragStart.current = { x: e.clientX, y: e.clientY, px: panX.get(), py: panY.get() };
+    },
+    [panX, panY]
+  );
+
+  const handleMouseMove = useCallback(
+    (e: React.MouseEvent) => {
+      if (!isPanning.current || !dragStart.current) return;
+      const dx = (e.clientX - dragStart.current.x) / zoom;
+      const dy = (e.clientY - dragStart.current.y) / zoom;
+      panX.set(dragStart.current.px + dx);
+      panY.set(dragStart.current.py + dy);
+    },
+    [zoom, panX, panY]
+  );
+
+  const handleMouseUp = useCallback(() => {
+    isPanning.current = false;
+    dragStart.current = null;
+  }, []);
+
+  // Scroll/trackpad pans
+  const handleWheel = useCallback(
+    (e: React.WheelEvent) => {
+      e.preventDefault();
+      // Pinch-zoom (ctrlKey is set for trackpad pinch)
+      if (e.ctrlKey) {
+        const delta = e.deltaY > 0 ? -0.08 : 0.08;
+        const next = Math.min(2, Math.max(0.3, zoom + delta));
+        setZoom(next);
+        scaleVal.set(next);
+        return;
+      }
+      // Otherwise pan
+      panX.set(panX.get() - e.deltaX / zoom);
+      panY.set(panY.get() - e.deltaY / zoom);
+    },
+    [zoom, scaleVal, panX, panY]
+  );
+
+  const doZoom = (dir: number) => {
+    const next = Math.min(2, Math.max(0.3, zoom + dir * 0.15));
+    setZoom(next);
+    animate(scaleVal, next, { duration: 0.2 });
+  };
+
+  const transformStr = useTransform(
+    [smoothScale, smoothX, smoothY],
+    ([s, x, y]) => `scale(${s}) translate(${x}px, ${y}px)`
+  );
+
+  return (
+    <div
+      ref={containerRef}
+      className="fixed inset-0 overflow-hidden"
+      style={{ cursor: isPanning.current ? "grabbing" : "grab", overscrollBehavior: "none" }}
+      onMouseDown={handleMouseDown}
+      onMouseMove={handleMouseMove}
+      onMouseUp={handleMouseUp}
+      onMouseLeave={handleMouseUp}
+      onWheel={handleWheel}
+    >
+      <motion.div
+        className="absolute origin-top-left will-change-transform"
+        style={{
+          width: canvasW,
+          height: canvasH,
+          transform: transformStr,
+        }}
+      >
+        {messages.map((msg, i) => {
+          const pos = positions[i];
+          if (!pos) return null;
+          const isHovered = hoveredId === msg.id;
+          const hasDrawing = (msg as Record<string, unknown>).drawing;
+
+          return (
+            <motion.div
+              key={msg.id}
+              data-card
+              onMouseEnter={() => setHoveredId(msg.id)}
+              onMouseLeave={() => setHoveredId(null)}
+              className="absolute flex flex-col justify-between p-5"
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{
+                opacity: 1,
+                scale: isHovered ? 1.06 : 1,
+                rotate: pos.rot,
+              }}
+              transition={{ type: "spring", stiffness: 400, damping: 25 }}
+              style={{
+                left: pos.x,
+                top: pos.y,
+                width: pos.w,
+                minHeight: 140,
+                backgroundColor: msg.color || "#ffffff",
+                fontFamily: font,
+                zIndex: isHovered ? 100 : i,
+                boxShadow: isHovered
+                  ? "0 20px 40px rgba(0,0,0,0.18)"
+                  : "0 1px 4px rgba(0,0,0,0.06)",
+              }}
+            >
+              {hasDrawing ? (
+                <StrokeRenderer
+                  strokes={JSON.parse(hasDrawing as string)}
+                  className="w-full"
+                />
+              ) : (
+                <p className="text-sm leading-relaxed text-gray-800">
+                  {msg.content}
+                </p>
+              )}
+              <p className="mt-auto pt-3 text-[11px] text-gray-400">{msg.author_name}</p>
+            </motion.div>
+          );
+        })}
+      </motion.div>
+
+      {/* Zoom controls */}
+      <div className="fixed bottom-6 right-24 z-30 flex items-center gap-1 rounded-full bg-white/80 px-1 py-1 shadow-md backdrop-blur-md">
+        <button
+          onClick={() => doZoom(-1)}
+          className="flex size-7 items-center justify-center rounded-full text-gray-600 transition-colors hover:bg-gray-100"
+        >
+          <Minus size={14} weight="bold" />
+        </button>
+        <span className="min-w-[3rem] text-center text-xs font-medium text-gray-600">
+          {Math.round(zoom * 100)}%
+        </span>
+        <button
+          onClick={() => doZoom(1)}
+          className="flex size-7 items-center justify-center rounded-full text-gray-600 transition-colors hover:bg-gray-100"
+        >
+          <Plus size={14} weight="bold" />
+        </button>
+      </div>
+
+      {/* Message count */}
+      <div className="fixed right-6 top-6 z-30 rounded-full bg-white/80 px-4 py-2 shadow-md backdrop-blur-md">
+        <span className="text-xs font-semibold text-gray-700">
+          {messages.length} {messages.length === 1 ? "message" : "good vibes shared"}
+        </span>
+      </div>
+
+      {/* Pan hint */}
+      <div className="fixed bottom-6 left-1/2 z-30 flex -translate-x-1/2 items-center gap-3 rounded-xl bg-black/60 px-4 py-2 text-xs text-white/60 backdrop-blur-md">
+        <span>To Navigate Canvas</span>
+        <span className="rounded-md bg-white/10 px-2 py-0.5 font-medium text-white/80">
+          Scroll
+        </span>
+        <span>or</span>
+        <span className="rounded-md bg-white/10 px-2 py-0.5 font-medium text-white/80">
+          Click + Drag
+        </span>
+      </div>
+    </div>
+  );
+}
