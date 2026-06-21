@@ -158,19 +158,38 @@ export default function NewBoard() {
         onColorChange={setColor}
       />
 
-      {/* Mobile preview overlay */}
-      {showPreview && (
-        <div className="fixed inset-0 z-50 flex flex-col bg-black lg:hidden">
-          <div className="flex items-center justify-between px-4 py-3">
-            <span className="text-sm font-medium text-white/60">Preview</span>
-            <button
-              onClick={() => setShowPreview(false)}
-              className="rounded-full bg-white/10 p-1.5 text-white/70 hover:bg-white/20"
-            >
-              <X size={16} weight="bold" />
-            </button>
+      {/* Mobile preview bottom sheet */}
+      <div
+        className={`fixed inset-0 z-50 lg:hidden transition-opacity duration-300 ${
+          showPreview ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0"
+        }`}
+      >
+        <div
+          className="absolute inset-0 bg-black/50"
+          onClick={() => setShowPreview(false)}
+        />
+        <div
+          className={`absolute bottom-0 left-0 right-0 flex flex-col rounded-t-3xl bg-white transition-transform duration-500 ease-out ${
+            showPreview ? "translate-y-0" : "translate-y-full"
+          }`}
+          style={{ height: "85vh" }}
+        >
+          {/* Handle + header */}
+          <div className="flex flex-col items-center px-5 pt-3 pb-2">
+            <div className="mb-3 h-1 w-10 rounded-full bg-gray-200" />
+            <div className="flex w-full items-center justify-between">
+              <span className="text-sm font-semibold text-gray-900">Preview</span>
+              <button
+                onClick={() => setShowPreview(false)}
+                className="rounded-full bg-gray-100 p-1.5 text-gray-500 hover:bg-gray-200"
+              >
+                <X size={14} weight="bold" />
+              </button>
+            </div>
           </div>
-          <div className="relative flex-1 overflow-hidden rounded-t-2xl">
+
+          {/* Preview content */}
+          <div className="relative mx-4 mb-4 flex-1 overflow-hidden rounded-2xl">
             {selectedTheme.id === "solid" ? (
               <div className="size-full" style={{ backgroundColor: color }} />
             ) : (
@@ -203,7 +222,7 @@ export default function NewBoard() {
             </div>
           </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }

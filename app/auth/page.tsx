@@ -3,24 +3,27 @@ import { signInWithGoogle } from "./actions";
 
 const Auth = () => {
   return (
-    <main className="relative max-w-xl mx-auto px-10 min-h-screen flex flex-col gap-6 items-center justify-center overflow-hidden">
+    <main className="relative mx-auto flex min-h-screen max-w-xl flex-col items-center justify-center overflow-hidden px-6 sm:px-10">
 
       <div className="flex">
-        <Image src="/logo.svg" alt="" height={50} width={50} />
+        <Image src="/logo.svg" alt="" height={50} width={50} className="size-10 sm:size-[50px]" />
       </div>
-      <h1 className="text-8xl font-hemis text-center leading-[0.80] flex items-center gap-6">
-        Words as
-        <span className="size-16 starburst shrink-0"></span>
-      </h1>
-      <h1 className="text-8xl font-hemis text-center leading-[0.80] flex items-center gap-6">
-        <span className="size-16 starburst shrink-0"></span>
-        Memories.
-      </h1>
 
-      <form action={signInWithGoogle}>
+      <div className="mt-6 flex flex-col gap-3 sm:gap-6">
+        <h1 className="flex items-center gap-3 text-center font-hemis text-5xl leading-[0.80] sm:gap-6 sm:text-8xl">
+          Words as
+          <span className="size-10 starburst shrink-0 sm:size-16"></span>
+        </h1>
+        <h1 className="flex items-center gap-3 text-center font-hemis text-5xl leading-[0.80] sm:gap-6 sm:text-8xl">
+          <span className="size-10 starburst shrink-0 sm:size-16"></span>
+          Memories.
+        </h1>
+      </div>
+
+      <form action={signInWithGoogle} className="mt-8 w-full sm:mt-10">
         <button
           type="submit"
-          className="mt-6 w-full flex items-center justify-center gap-3 rounded-full bg-black px-6 py-4 text-base font-medium text-white transition-colors hover:bg-gray-900 active:bg-gray-800"
+          className="flex w-full items-center justify-center gap-3 rounded-full bg-black px-6 py-3.5 text-sm font-medium text-white transition-colors hover:bg-gray-900 active:bg-gray-800 sm:py-4 sm:text-base"
         >
           <svg viewBox="0 0 24 24" width="20" height="20">
             <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4" />
@@ -32,7 +35,7 @@ const Auth = () => {
         </button>
       </form>
 
-      <p className="mt-4 max-w-xs text-center text-xs text-gray-400">
+      <p className="mt-6 max-w-xs text-center text-[11px] text-gray-400 sm:mt-8 sm:text-xs">
         By continuing, you agree to our{" "}
         <a href="/terms" className="underline hover:text-gray-600">Terms of Service</a>{" "}
         and{" "}
