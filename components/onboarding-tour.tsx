@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { ArrowRight, ArrowLeft } from "@phosphor-icons/react";
+import { completeOnboarding } from "@/app/(dashboard)/actions";
 
 const slides = [
   {
@@ -61,20 +62,13 @@ const slides = [
   },
 ];
 
-const STORAGE_KEY = "postmarks-onboarding-seen";
-
 export function OnboardingTour() {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(true);
   const [current, setCurrent] = useState(0);
-
-  useEffect(() => {
-    const seen = localStorage.getItem(STORAGE_KEY);
-    if (!seen) setOpen(true);
-  }, []);
 
   const dismiss = () => {
     setOpen(false);
-    localStorage.setItem(STORAGE_KEY, "true");
+    completeOnboarding();
   };
 
   const next = () => {

@@ -27,6 +27,14 @@ export default async function DashboardLayout({
     .order("created_at", { ascending: false })
     .limit(5);
 
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("has_seen_onboarding")
+    .eq("id", user?.id ?? "")
+    .single();
+
+  const showOnboarding = !profile?.has_seen_onboarding;
+
   const displayName =
     user?.user_metadata?.full_name ||
     user?.email?.split("@")[0] ||
@@ -141,7 +149,7 @@ export default async function DashboardLayout({
         {children}
       </main>
 
-      <OnboardingTour />
+      {showOnboarding && <OnboardingTour />}
     </div>
   );
 }
