@@ -57,9 +57,16 @@ export async function createBoard(input: CreateBoardInput): Promise<Board> {
 export async function getBoards(): Promise<Board[]> {
   const supabase = createClient();
 
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) throw new Error("Not authenticated");
+
   const { data, error } = await supabase
     .from("boards")
     .select("*")
+    .eq("user_id", user.id)
     .order("created_at", { ascending: false });
 
   if (error) throw error;
@@ -82,7 +89,17 @@ export async function getBoard(id: string): Promise<Board> {
 export async function deleteBoard(id: string): Promise<void> {
   const supabase = createClient();
 
-  const { error } = await supabase.from("boards").delete().eq("id", id);
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) throw new Error("Not authenticated");
+
+  const { error } = await supabase
+    .from("boards")
+    .delete()
+    .eq("id", id)
+    .eq("user_id", user.id);
 
   if (error) throw error;
 }
