@@ -205,7 +205,7 @@ export function PublicBoard({ board, creator }: { board: Board; creator: Creator
               <div className="mb-2 h-1 w-10 rounded-full bg-gray-200" />
               <div className="flex w-full items-center justify-between">
                 <span className="text-sm font-semibold text-gray-900">Leave a message</span>
-                <button onClick={handleClose} className="rounded-full bg-gray-100 p-1.5 text-gray-500">
+                <button onClick={handleClose} className="rounded-full cursor-pointer bg-gray-100 p-1.5 text-gray-500">
                   <X size={14} weight="bold" />
                 </button>
               </div>

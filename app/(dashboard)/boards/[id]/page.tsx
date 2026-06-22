@@ -3,7 +3,7 @@
 import { useParams } from "next/navigation";
 import { useBoard } from "@/hooks/use-boards";
 import { useMessages } from "@/hooks/use-messages";
-import { StrokeRenderer, type Stroke } from "@/components/drawing-canvas";
+import { StrokeRenderer } from "@/components/drawing-canvas";
 import Link from "next/link";
 import {
   Copy,
@@ -41,25 +41,32 @@ export default function BoardPage() {
   };
 
   return (
-    <div className="flex flex-1 flex-col px-10 py-8">
+    <div className="flex flex-1 flex-col px-4 py-6 sm:px-10 sm:py-8">
       {/* Header */}
-      <div className="mb-8 flex items-start justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold text-gray-900">{board.title}</h1>
-          {board.description && (
-            <p className="mt-1 text-sm text-gray-400">{board.description}</p>
-          )}
-          <div className="mt-2 flex items-center gap-2 text-xs text-gray-400">
-            <span className="capitalize">{board.visibility}</span>
-            <span>·</span>
-            <span>{messages?.length ?? 0} messages</span>
+      <div className="mb-6 sm:mb-8">
+        <div className="mb-3 flex items-start justify-between">
+          <div className="min-w-0 flex-1">
+            <h1 className="text-xl font-semibold text-gray-900 sm:text-2xl">
+              {board.title}
+            </h1>
+            {board.description && (
+              <p className="mt-1 text-sm text-gray-400 line-clamp-2">
+                {board.description}
+              </p>
+            )}
+            <div className="mt-2 flex items-center gap-2 text-xs text-gray-400">
+              <span className="capitalize">{board.visibility}</span>
+              <span>·</span>
+              <span>{messages?.length ?? 0} messages</span>
+            </div>
           </div>
         </div>
 
+        {/* Action buttons */}
         <div className="flex items-center gap-2">
           <button
             onClick={copyLink}
-            className="flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-2 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-50"
+            className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-gray-200 px-3 py-2.5 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-50 sm:flex-none"
           >
             <Copy size={14} />
             Copy Link
@@ -67,7 +74,7 @@ export default function BoardPage() {
           <Link
             href={`/b/${board.slug}`}
             target="_blank"
-            className="flex items-center gap-1.5 rounded-lg bg-black px-3 py-2 text-xs font-medium text-white transition-colors hover:bg-gray-900"
+            className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-black px-3 py-2.5 text-xs font-medium text-white transition-colors hover:bg-gray-900 sm:flex-none"
           >
             <ArrowSquareOut size={14} />
             View Board
@@ -81,16 +88,16 @@ export default function BoardPage() {
           <div className="size-6 animate-spin rounded-full border-2 border-gray-300 border-t-gray-900" />
         </div>
       ) : messages && messages.length > 0 ? (
-        <div className="columns-2 gap-4 sm:columns-3 lg:columns-4">
+        <div className="columns-1 gap-3 sm:columns-2 lg:columns-3 xl:columns-4">
           {messages.map((msg) => {
             const hasDrawing = (msg as Record<string, unknown>).drawing;
             return (
               <div
                 key={msg.id}
-                className="mb-4 break-inside-avoid p-4 shadow-sm"
+                className="mb-3 break-inside-avoid p-4 shadow-sm"
                 style={{
                   backgroundColor: msg.color || "#ffffff",
-                  transform: `rotate(${msg.rotation || 0}deg)`,
+                  transform: `rotate(${(msg.rotation || 0) * 0.5}deg)`,
                   fontFamily: board.font,
                 }}
               >
@@ -118,7 +125,7 @@ export default function BoardPage() {
           })}
         </div>
       ) : (
-        <div className="flex flex-1 flex-col items-center justify-center">
+        <div className="flex flex-1 flex-col items-center justify-center px-4">
           <ShareNetwork size={40} className="mb-3 text-gray-200" />
           <h2 className="mb-1 text-lg font-semibold text-gray-800">
             No messages yet
