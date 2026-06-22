@@ -1,5 +1,9 @@
 @import "tailwindcss";
 
+button, [role="button"], a {
+  cursor: pointer;
+}
+
 :root {
   --background: #ffffff;
   --foreground: #171717;
