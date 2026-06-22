@@ -9,6 +9,7 @@ import {
 import { createClient } from "@/lib/supabase/server";
 import { signOut } from "@/app/auth/actions";
 import { MobileSidebar } from "@/components/mobile-sidebar";
+import { OnboardingTour } from "@/components/onboarding-tour";
 
 export default async function DashboardLayout({
   children,
@@ -139,6 +140,8 @@ export default async function DashboardLayout({
       <main className="flex flex-1 flex-col overflow-y-auto pt-14 md:pt-0">
         {children}
       </main>
+
+      <OnboardingTour />
     </div>
   );
 }
