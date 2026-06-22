@@ -75,7 +75,7 @@ export function OnboardingTour() {
     <AnimatePresence>
       {open && (
         <motion.div
-          className="fixed inset-0 z-[60] flex items-center justify-center px-4"
+          className="fixed inset-0 z-[60] flex items-end justify-center px-4 pb-4 md:items-center md:pb-0"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -85,9 +85,9 @@ export function OnboardingTour() {
 
           <motion.div
             className="relative w-full max-w-sm overflow-hidden rounded-2xl bg-white shadow-xl"
-            initial={{ scale: 0.92, opacity: 0, y: 20 }}
-            animate={{ scale: 1, opacity: 1, y: 0 }}
-            exit={{ scale: 0.92, opacity: 0, y: 20 }}
+            initial={{ y: 100, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 100, opacity: 0 }}
             transition={{ type: "spring", stiffness: 400, damping: 30 }}
           >
             {/* Shader header */}
