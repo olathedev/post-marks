@@ -16,9 +16,22 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     .eq("slug", slug)
     .single();
 
+  const title = board?.title ?? "Board";
+  const description = board?.description ?? "Leave a message on this board";
+
   return {
-    title: board?.title ?? "Board",
-    description: board?.description ?? "Leave a message",
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      type: "website",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+    },
   };
 }
 

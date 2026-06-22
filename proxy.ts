@@ -6,9 +6,10 @@ const publicRoutes = ["/auth", "/auth/callback", "/b"];
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const isPublicRoute = publicRoutes.some((route) =>
-    pathname.startsWith(route)
-  );
+  const isPublicRoute =
+    publicRoutes.some((route) => pathname.startsWith(route)) ||
+    pathname.includes("opengraph-image") ||
+    pathname.includes("twitter-image");
 
   let supabaseResponse = NextResponse.next({ request });
 

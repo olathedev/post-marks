@@ -43,8 +43,23 @@ const dmSerifDisplay = DM_Serif_Display({
 });
 
 export const metadata: Metadata = {
-  title: "PostMarks",
-  description: "Words as memories",
+  title: {
+    default: "PostMarks",
+    template: "%s — PostMarks",
+  },
+  description: "Words as memories. Create boards, collect messages, and share moments with your community.",
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"),
+  openGraph: {
+    title: "PostMarks",
+    description: "Words as memories. Create boards, collect messages, and share moments with your community.",
+    siteName: "PostMarks",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "PostMarks",
+    description: "Words as memories. Create boards, collect messages, and share moments with your community.",
+  },
 };
 
 export const viewport = {
