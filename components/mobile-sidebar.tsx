@@ -28,7 +28,14 @@ export function MobileSidebar({ children }: { children: React.ReactNode }) {
             >
               <X size={18} />
             </button>
-            <div className="flex flex-1 flex-col" onClick={() => setOpen(false)}>
+            <div
+              className="flex flex-1 flex-col"
+              onClick={(e) => {
+                const target = e.target as HTMLElement;
+                if (target.closest("form")) return;
+                if (target.closest("a")) setOpen(false);
+              }}
+            >
               {children}
             </div>
           </aside>
