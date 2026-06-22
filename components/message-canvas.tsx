@@ -64,9 +64,11 @@ function layoutCards(count: number): { positions: CardPos[]; width: number; heig
 export function MessageCanvas({
   messages,
   font,
+  onCardClick,
 }: {
   messages: Message[];
   font: string;
+  onCardClick?: (msg: Message) => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
@@ -225,6 +227,7 @@ export function MessageCanvas({
               data-card
               onMouseEnter={() => setHoveredId(msg.id)}
               onMouseLeave={() => setHoveredId(null)}
+              onClick={() => onCardClick?.(msg)}
               className="absolute flex flex-col justify-between p-5"
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{

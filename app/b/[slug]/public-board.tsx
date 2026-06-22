@@ -9,7 +9,8 @@ import { MessageCanvas } from "@/components/message-canvas";
 import { useMessages, useCreateMessage } from "@/hooks/use-messages";
 import { toast } from "sonner";
 import { VisitorTour } from "@/components/visitor-tour";
-import type { Board } from "@/lib/types";
+import { CardShare } from "@/components/card-share";
+import type { Board, Message } from "@/lib/types";
 import Image from "next/image";
 
 const noteColors = [
@@ -37,8 +38,10 @@ export function PublicBoard({ board, creator }: { board: Board; creator: Creator
   const [content, setContent] = useState("");
   const [drawingStrokes, setDrawingStrokes] = useState<Stroke[]>([]);
   const [selectedColor, setSelectedColor] = useState(noteColors[0]);
+  const [shareCard, setShareCard] = useState<Message | null>(null);
 
   const isSolid = board.theme_id === "solid";
+  const siteUrl = typeof window !== "undefined" ? window.location.origin : "";
 
   const handleClose = useCallback(() => {
     setShowForm(false);
@@ -146,7 +149,8 @@ export function PublicBoard({ board, creator }: { board: Board; creator: Creator
                 return (
                   <div
                     key={msg.id}
-                    className="mb-3 flex break-inside-avoid flex-col justify-between p-3.5 shadow-sm"
+                    onClick={() => setShareCard(msg)}
+                    className="mb-3 flex break-inside-avoid flex-col justify-between p-3.5 shadow-sm active:scale-[0.97] transition-transform"
                     style={{
                       backgroundColor: msg.color || "#ffffff",
                       fontFamily: board.font,
@@ -329,7 +333,7 @@ export function PublicBoard({ board, creator }: { board: Board; creator: Creator
             <div className="size-5 animate-spin rounded-full border-2 border-white/20 border-t-white/60" />
           </div>
         ) : messages && messages.length > 0 ? (
-          <MessageCanvas messages={messages} font={board.font} />
+          <MessageCanvas messages={messages} font={board.font} onCardClick={setShareCard} />
         ) : (
           <div className="flex flex-1 flex-col items-center justify-center">
             <p className="text-sm" style={{ color: theme.subtitleColor }}>
@@ -489,6 +493,15 @@ export function PublicBoard({ board, creator }: { board: Board; creator: Creator
       </div>
 
       <VisitorTour boardSlug={board.slug} />
+
+      {shareCard && (
+        <CardShare
+          message={shareCard}
+          font={board.font}
+          siteUrl={siteUrl}
+          onClose={() => setShareCard(null)}
+        />
+      )}
     </div>
   );
 }
