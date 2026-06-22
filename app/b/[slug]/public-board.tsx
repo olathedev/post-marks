@@ -8,6 +8,7 @@ import { DrawingCanvas, StrokeRenderer, type Stroke } from "@/components/drawing
 import { MessageCanvas } from "@/components/message-canvas";
 import { useMessages, useCreateMessage } from "@/hooks/use-messages";
 import { toast } from "sonner";
+import { VisitorTour } from "@/components/visitor-tour";
 import type { Board } from "@/lib/types";
 import Image from "next/image";
 
@@ -486,6 +487,8 @@ export function PublicBoard({ board, creator }: { board: Board; creator: Creator
           </div>
         )}
       </div>
+
+      <VisitorTour boardSlug={board.slug} />
     </div>
   );
 }
