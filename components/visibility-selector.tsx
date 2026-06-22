@@ -1,6 +1,6 @@
 "use client";
 
-import { Globe, Lock, LinkSimple } from "@phosphor-icons/react";
+import { Globe, Lock } from "@phosphor-icons/react";
 import type { Icon } from "@phosphor-icons/react";
 
 type VisibilityOption = {
@@ -11,9 +11,8 @@ type VisibilityOption = {
 };
 
 const options: VisibilityOption[] = [
-  { id: "public", label: "Public", desc: "Anyone can view and post", icon: Globe },
-  { id: "private", label: "Private", desc: "Only invited people", icon: Lock },
-  { id: "link", label: "Link only", desc: "Anyone with the link", icon: LinkSimple },
+  { id: "public", label: "Public", desc: "Everyone can view messages", icon: Globe },
+  { id: "private", label: "Private", desc: "Only you can view messages", icon: Lock },
 ];
 
 export function VisibilitySelector({

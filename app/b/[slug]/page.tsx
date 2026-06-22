@@ -47,11 +47,12 @@ export default async function BoardPage({ params }: Props) {
 
   if (!board) notFound();
 
+  let isOwner = false;
   if (board.visibility === "private") {
     const {
       data: { user },
     } = await supabase.auth.getUser();
-    if (!user || user.id !== board.user_id) notFound();
+    isOwner = !!user && user.id === board.user_id;
   }
 
   const creator = (board as Record<string, unknown>).profiles as {
@@ -66,6 +67,7 @@ export default async function BoardPage({ params }: Props) {
         name: creator?.full_name || "Someone",
         avatar_url: creator?.avatar_url || null,
       }}
+      canViewMessages={board.visibility === "public" || isOwner}
     />
   );
 }

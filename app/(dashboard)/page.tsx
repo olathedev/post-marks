@@ -9,7 +9,6 @@ import {
   ShareNetwork,
   Globe,
   Lock,
-  LinkSimple,
 } from "@phosphor-icons/react";
 import { useBoards } from "@/hooks/use-boards";
 import { ShareModal } from "@/components/share-modal";
@@ -20,7 +19,6 @@ const tabs = ["All", "Active", "Shared", "Archived"];
 const visibilityIcon: Record<string, typeof Globe> = {
   public: Globe,
   private: Lock,
-  link: LinkSimple,
 };
 
 export default function Home() {

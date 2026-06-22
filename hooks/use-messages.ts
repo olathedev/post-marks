@@ -2,11 +2,11 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getMessages, createMessage } from "@/services/messages";
 import type { CreateMessageInput } from "@/lib/types";
 
-export function useMessages(boardId: string) {
+export function useMessages(boardId: string, enabled = true) {
   return useQuery({
     queryKey: ["messages", boardId],
     queryFn: () => getMessages(boardId),
-    enabled: !!boardId,
+    enabled: !!boardId && enabled,
   });
 }
 

@@ -26,16 +26,52 @@ export function CardShare({ message, font, siteUrl, onClose }: CardShareProps) {
     const ctx = canvas.getContext("2d");
     if (!ctx) return null;
 
-    const w = 1080;
-    const h = 1350;
+    const scale = 2;
+    const pad = 32 * scale;
+    const cardPad = 16 * scale;
+    const cardW = 280 * scale;
+    const fontSize = 13 * scale;
+    const authorSize = 10 * scale;
+    const lineHeight = Math.round(fontSize * 1.6);
+    const brandingHeight = 48 * scale;
+
+    // Measure text height to fit the card to content
+    let contentHeight = 0;
+    const textMaxW = cardW - cardPad * 2;
+
+    if (hasDrawing) {
+      contentHeight = 140 * scale;
+    } else {
+      ctx.font = `${fontSize}px ${font}, system-ui, sans-serif`;
+      const text = message.content || "";
+      const words = text.split(" ");
+      let line = "";
+      let lines = 0;
+      for (const word of words) {
+        const test = line + word + " ";
+        if (ctx.measureText(test).width > textMaxW && line) {
+          lines++;
+          line = word + " ";
+        } else {
+          line = test;
+        }
+      }
+      if (line.trim()) lines++;
+      contentHeight = Math.max(lines * lineHeight, lineHeight);
+    }
+
+    const authorGap = 16 * scale;
+    const cardH = cardPad + contentHeight + authorGap + authorSize + cardPad;
+    const w = cardW + pad * 2;
+    const h = pad + cardH + brandingHeight + pad;
     canvas.width = w;
     canvas.height = h;
 
-    // Background
+    // Dark background
     ctx.fillStyle = "#18181b";
     ctx.fillRect(0, 0, w, h);
 
-    // Subtle gradient orbs
+    // Subtle gradient orbs — scaled to fit
     const drawOrb = (x: number, y: number, r: number, color: string) => {
       const grad = ctx.createRadialGradient(x, y, 0, x, y, r);
       grad.addColorStop(0, color);
@@ -43,23 +79,18 @@ export function CardShare({ message, font, siteUrl, onClose }: CardShareProps) {
       ctx.fillStyle = grad;
       ctx.fillRect(x - r, y - r, r * 2, r * 2);
     };
-    drawOrb(200, 150, 300, "rgba(251,146,60,0.15)");
-    drawOrb(880, 400, 280, "rgba(168,85,247,0.12)");
-    drawOrb(500, 1100, 350, "rgba(219,39,119,0.1)");
+    drawOrb(w * 0.15, h * 0.1, w * 0.4, "rgba(251,146,60,0.15)");
+    drawOrb(w * 0.85, h * 0.35, w * 0.35, "rgba(168,85,247,0.12)");
+    drawOrb(w * 0.5, h * 0.85, w * 0.4, "rgba(219,39,119,0.1)");
 
     // Sticky note card
-    const cardX = 90;
-    const cardY = 200;
-    const cardW = w - 180;
-    const cardH = 800;
+    const cardX = pad;
+    const cardY = pad;
 
+    ctx.shadowColor = "rgba(0,0,0,0.15)";
+    ctx.shadowBlur = 20;
+    ctx.shadowOffsetY = 6;
     ctx.fillStyle = message.color || "#ffffff";
-    ctx.fillRect(cardX, cardY, cardW, cardH);
-
-    // Card shadow
-    ctx.shadowColor = "rgba(0,0,0,0.1)";
-    ctx.shadowBlur = 30;
-    ctx.shadowOffsetY = 10;
     ctx.fillRect(cardX, cardY, cardW, cardH);
     ctx.shadowColor = "transparent";
     ctx.shadowBlur = 0;
@@ -67,7 +98,6 @@ export function CardShare({ message, font, siteUrl, onClose }: CardShareProps) {
 
     // Message content
     if (hasDrawing) {
-      // Render drawing to a temporary SVG then draw it
       const strokes = JSON.parse(hasDrawing as string);
       let svgPaths = "";
       for (const stroke of strokes) {
@@ -81,13 +111,15 @@ export function CardShare({ message, font, siteUrl, onClose }: CardShareProps) {
         }
         svgPaths += `<path d="${d}" stroke="${stroke.color}" stroke-width="${stroke.width}" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`;
       }
-      const svgStr = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 260" width="${cardW - 120}" height="${cardH - 200}">${svgPaths}</svg>`;
+      const drawW = textMaxW;
+      const drawH = contentHeight;
+      const svgStr = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 260" width="${drawW}" height="${drawH}">${svgPaths}</svg>`;
       const img = new window.Image();
       const blob = new Blob([svgStr], { type: "image/svg+xml" });
       const url = URL.createObjectURL(blob);
       await new Promise<void>((resolve) => {
         img.onload = () => {
-          ctx.drawImage(img, cardX + 60, cardY + 60, cardW - 120, cardH - 200);
+          ctx.drawImage(img, cardX + cardPad, cardY + cardPad, drawW, drawH);
           URL.revokeObjectURL(url);
           resolve();
         };
@@ -99,21 +131,18 @@ export function CardShare({ message, font, siteUrl, onClose }: CardShareProps) {
       });
     } else {
       ctx.fillStyle = "#1f2937";
-      ctx.font = `28px ${font}, system-ui, sans-serif`;
+      ctx.font = `${fontSize}px ${font}, system-ui, sans-serif`;
       ctx.textBaseline = "top";
 
       const text = message.content || "";
-      const maxWidth = cardW - 120;
-      const lineHeight = 40;
       const words = text.split(" ");
       let line = "";
-      let y = cardY + 70;
+      let y = cardY + cardPad;
 
       for (const word of words) {
         const test = line + word + " ";
-        const metrics = ctx.measureText(test);
-        if (metrics.width > maxWidth && line) {
-          ctx.fillText(line.trim(), cardX + 60, y);
+        if (ctx.measureText(test).width > textMaxW && line) {
+          ctx.fillText(line.trim(), cardX + cardPad, y);
           line = word + " ";
           y += lineHeight;
         } else {
@@ -121,26 +150,26 @@ export function CardShare({ message, font, siteUrl, onClose }: CardShareProps) {
         }
       }
       if (line.trim()) {
-        ctx.fillText(line.trim(), cardX + 60, y);
+        ctx.fillText(line.trim(), cardX + cardPad, y);
       }
     }
 
     // Author name at bottom of card
     ctx.fillStyle = "#9ca3af";
-    ctx.font = "20px system-ui, sans-serif";
+    ctx.font = `${authorSize}px system-ui, sans-serif`;
     ctx.textBaseline = "bottom";
-    ctx.fillText(message.author_name, cardX + 60, cardY + cardH - 50);
+    ctx.fillText(message.author_name, cardX + cardPad, cardY + cardH - cardPad);
 
-    // PostMarks branding at bottom
+    // PostMarks branding
     ctx.fillStyle = "rgba(255,255,255,0.4)";
-    ctx.font = "bold 22px system-ui, sans-serif";
+    ctx.font = `bold ${11 * scale}px system-ui, sans-serif`;
     ctx.textAlign = "center";
     ctx.textBaseline = "bottom";
-    ctx.fillText("PostMarks", w / 2, h - 80);
+    ctx.fillText("PostMarks", w / 2, h - pad - 8 * scale);
 
     ctx.fillStyle = "rgba(255,255,255,0.25)";
-    ctx.font = "16px system-ui, sans-serif";
-    ctx.fillText(`Create yours at ${siteUrl.replace(/^https?:\/\//, "")}`, w / 2, h - 50);
+    ctx.font = `${9 * scale}px system-ui, sans-serif`;
+    ctx.fillText(siteUrl.replace(/^https?:\/\//, ""), w / 2, h - pad);
 
     return new Promise((resolve) => {
       canvas.toBlob((b) => resolve(b), "image/png", 1);

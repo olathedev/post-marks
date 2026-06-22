@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Plus, TextAa, Scribble, X } from "@phosphor-icons/react";
+import { Plus, TextAa, Scribble, X, Lock } from "@phosphor-icons/react";
 import { ThemePreview } from "@/components/theme-previews";
 import { themes, type Theme } from "@/components/theme-selector";
 import { DrawingCanvas, StrokeRenderer, type Stroke } from "@/components/drawing-canvas";
@@ -27,9 +27,17 @@ type Creator = {
   avatar_url: string | null;
 };
 
-export function PublicBoard({ board, creator }: { board: Board; creator: Creator }) {
+export function PublicBoard({
+  board,
+  creator,
+  canViewMessages,
+}: {
+  board: Board;
+  creator: Creator;
+  canViewMessages: boolean;
+}) {
   const theme = getTheme(board.theme_id);
-  const { data: messages, isLoading } = useMessages(board.id);
+  const { data: messages, isLoading } = useMessages(board.id, canViewMessages);
   const createMessage = useCreateMessage(board.id);
 
   const [showForm, setShowForm] = useState(false);
@@ -99,88 +107,55 @@ export function PublicBoard({ board, creator }: { board: Board; creator: Creator
 
       {/* ===== MOBILE LAYOUT ===== */}
       <div className="flex flex-1 flex-col md:hidden">
-        {/* Mobile header */}
-        <header className="relative z-10 px-5 pb-3 pt-6 text-center">
-          <Image src="/logo.svg" alt="PostMarks" width={24} height={24} className="mx-auto mb-3 opacity-60" />
-          <h1
-            className="text-lg"
-            style={{
-              fontFamily: theme.titleFont,
-              color: theme.titleColor,
-              fontWeight: theme.titleWeight,
-              letterSpacing: theme.titleTracking,
-              textTransform: theme.titleTransform as "none" | "uppercase",
-            }}
-          >
-            {board.title}
-          </h1>
-          {board.description && (
-            <p
-              className="mx-auto mt-1 max-w-xs text-xs"
-              style={{ fontFamily: theme.titleFont, color: theme.subtitleColor }}
-            >
-              {board.description}
-            </p>
-          )}
-          <div className="mt-2 flex items-center justify-center gap-1.5">
+        {/* Mobile header — floating overlay */}
+        <header className="pointer-events-none fixed inset-x-0 top-0 z-20 flex justify-center px-5 pt-5">
+          <div className="pointer-events-auto flex items-center gap-2 rounded-full bg-black/30 px-4 py-2 backdrop-blur-md">
             {creator.avatar_url ? (
-              <Image src={creator.avatar_url} alt={creator.name} width={16} height={16} className="rounded-full" />
+              <Image src={creator.avatar_url} alt={creator.name} width={18} height={18} className="shrink-0 rounded-full" />
             ) : (
-              <div className="flex size-4 items-center justify-center rounded-full bg-white/20 text-[8px] font-semibold" style={{ color: theme.titleColor }}>
+              <div className="flex size-[18px] shrink-0 items-center justify-center rounded-full bg-white/20 text-[8px] font-semibold" style={{ color: theme.titleColor }}>
                 {creator.name.charAt(0).toUpperCase()}
               </div>
             )}
-            <span className="text-[10px]" style={{ color: theme.subtitleColor }}>
-              by {creator.name}
-            </span>
+            <h1
+              className="truncate text-sm"
+              style={{
+                fontFamily: theme.titleFont,
+                color: theme.titleColor,
+                fontWeight: theme.titleWeight,
+                letterSpacing: theme.titleTracking,
+                textTransform: theme.titleTransform as "none" | "uppercase",
+              }}
+            >
+              {board.title}
+            </h1>
           </div>
         </header>
 
-        {/* Mobile messages — scrollable feed */}
-        <main className="relative z-10 flex-1 overflow-y-auto px-4 pb-24 pt-4">
-          {isLoading ? (
-            <div className="flex items-center justify-center py-16">
-              <div className="size-5 animate-spin rounded-full border-2 border-white/20 border-t-white/60" />
-            </div>
-          ) : messages && messages.length > 0 ? (
-            <div className="columns-2 gap-3">
-              {messages.map((msg) => {
-                const hasDrawing = (msg as Record<string, unknown>).drawing;
-                return (
-                  <div
-                    key={msg.id}
-                    onClick={() => setShareCard(msg)}
-                    className="mb-3 flex break-inside-avoid flex-col justify-between p-3.5 shadow-sm active:scale-[0.97] transition-transform"
-                    style={{
-                      backgroundColor: msg.color || "#ffffff",
-                      fontFamily: board.font,
-                      transform: `rotate(${(msg.rotation || 0) * 0.5}deg)`,
-                      minHeight: 100,
-                    }}
-                  >
-                    {hasDrawing ? (
-                      <StrokeRenderer
-                        strokes={JSON.parse(hasDrawing as string)}
-                        className="w-full"
-                      />
-                    ) : (
-                      <p className="text-[13px] leading-relaxed text-gray-800">
-                        {msg.content}
-                      </p>
-                    )}
-                    <p className="mt-auto pt-2 text-[10px] text-gray-400">{msg.author_name}</p>
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="flex flex-col items-center justify-center py-16">
-              <p className="text-sm" style={{ color: theme.subtitleColor }}>
-                No messages yet — be the first!
-              </p>
-            </div>
-          )}
-        </main>
+        {/* Mobile messages — canvas */}
+        {!canViewMessages ? (
+          <div className="flex flex-1 flex-col items-center justify-center">
+            <Lock size={28} style={{ color: theme.subtitleColor }} className="mb-2 opacity-60" />
+            <p className="text-sm font-medium" style={{ color: theme.subtitleColor }}>
+              Messages are private
+            </p>
+            <p className="mt-1 text-xs opacity-60" style={{ color: theme.subtitleColor }}>
+              Only the board creator can view messages
+            </p>
+          </div>
+        ) : isLoading ? (
+          <div className="flex flex-1 items-center justify-center">
+            <div className="size-5 animate-spin rounded-full border-2 border-white/20 border-t-white/60" />
+          </div>
+        ) : messages && messages.length > 0 ? (
+          <MessageCanvas messages={messages} font={board.font} onCardClick={setShareCard} />
+        ) : (
+          <div className="flex flex-1 flex-col items-center justify-center">
+            <p className="text-sm" style={{ color: theme.subtitleColor }}>
+              No messages yet — be the first!
+            </p>
+          </div>
+        )}
 
         {/* Mobile FAB */}
         {!showForm && (
@@ -328,7 +303,17 @@ export function PublicBoard({ board, creator }: { board: Board; creator: Creator
         )}
 
         {/* Canvas messages */}
-        {isLoading ? (
+        {!canViewMessages ? (
+          <div className="flex flex-1 flex-col items-center justify-center">
+            <Lock size={36} style={{ color: theme.subtitleColor }} className="mb-3 opacity-60" />
+            <p className="text-base font-medium" style={{ color: theme.subtitleColor }}>
+              Messages are private
+            </p>
+            <p className="mt-1 text-sm opacity-60" style={{ color: theme.subtitleColor }}>
+              Only the board creator can view messages
+            </p>
+          </div>
+        ) : isLoading ? (
           <div className="flex flex-1 items-center justify-center">
             <div className="size-5 animate-spin rounded-full border-2 border-white/20 border-t-white/60" />
           </div>

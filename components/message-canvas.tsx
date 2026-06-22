@@ -20,10 +20,10 @@ const CANVAS_H = 3000;
 function layoutCards(count: number): { positions: CardPos[]; width: number; height: number } {
   if (count === 0) return { positions: [], width: CANVAS_W, height: CANVAS_H };
 
-  const cardW = 200;
-  const cardH = 170;
-  const overlapX = 60;
-  const overlapY = 40;
+  const cardW = 280;
+  const cardH = 220;
+  const overlapX = 80;
+  const overlapY = 50;
 
   const cols = Math.ceil(Math.sqrt(count * 1.4));
   const rows = Math.ceil(count / cols);
@@ -54,7 +54,7 @@ function layoutCards(count: number): { positions: CardPos[]; width: number; heig
       x: baseX + jX,
       y: baseY + jY,
       rot: Math.round((Math.random() - 0.5) * 10),
-      w: 180 + Math.floor(Math.random() * 40),
+      w: 250 + Math.floor(Math.random() * 60),
     });
   }
 
@@ -96,6 +96,8 @@ export function MessageCanvas({
 
   const scaleVal = useMotionValue(1.4);
   const smoothScale = useSpring(scaleVal, { stiffness: 300, damping: 30 });
+  const zoomRef = useRef(zoom);
+  zoomRef.current = zoom;
 
   // Center on mount
   useEffect(() => {
@@ -136,7 +138,7 @@ export function MessageCanvas({
     };
   }, []);
 
-  // Pan via drag
+  // Pan via drag (mouse)
   const dragStart = useRef<{ x: number; y: number; px: number; py: number } | null>(null);
   const isPanning = useRef(false);
 
@@ -165,6 +167,67 @@ export function MessageCanvas({
     isPanning.current = false;
     dragStart.current = null;
   }, []);
+
+  // Touch panning + pinch-to-zoom
+  const touchStart = useRef<{ x: number; y: number; px: number; py: number } | null>(null);
+  const pinchStart = useRef<{ dist: number; zoom: number } | null>(null);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    const onTouchStart = (e: TouchEvent) => {
+      if (e.touches.length === 2) {
+        e.preventDefault();
+        const dx = e.touches[0].clientX - e.touches[1].clientX;
+        const dy = e.touches[0].clientY - e.touches[1].clientY;
+        pinchStart.current = { dist: Math.hypot(dx, dy), zoom: zoomRef.current };
+        touchStart.current = null;
+      } else if (e.touches.length === 1) {
+        touchStart.current = {
+          x: e.touches[0].clientX,
+          y: e.touches[0].clientY,
+          px: panX.get(),
+          py: panY.get(),
+        };
+        pinchStart.current = null;
+      }
+    };
+
+    const onTouchMove = (e: TouchEvent) => {
+      e.preventDefault();
+      if (e.touches.length === 2 && pinchStart.current) {
+        const dx = e.touches[0].clientX - e.touches[1].clientX;
+        const dy = e.touches[0].clientY - e.touches[1].clientY;
+        const dist = Math.hypot(dx, dy);
+        const ratio = dist / pinchStart.current.dist;
+        const next = Math.min(2, Math.max(0.3, pinchStart.current.zoom * ratio));
+        setZoom(next);
+        scaleVal.set(next);
+      } else if (e.touches.length === 1 && touchStart.current) {
+        const z = zoomRef.current;
+        const dx = (e.touches[0].clientX - touchStart.current.x) / z;
+        const dy = (e.touches[0].clientY - touchStart.current.y) / z;
+        panX.set(touchStart.current.px + dx);
+        panY.set(touchStart.current.py + dy);
+      }
+    };
+
+    const onTouchEnd = () => {
+      touchStart.current = null;
+      pinchStart.current = null;
+    };
+
+    el.addEventListener("touchstart", onTouchStart, { passive: false });
+    el.addEventListener("touchmove", onTouchMove, { passive: false });
+    el.addEventListener("touchend", onTouchEnd);
+
+    return () => {
+      el.removeEventListener("touchstart", onTouchStart);
+      el.removeEventListener("touchmove", onTouchMove);
+      el.removeEventListener("touchend", onTouchEnd);
+    };
+  }, [panX, panY, scaleVal]);
 
   // Scroll/trackpad pans
   const handleWheel = useCallback(
@@ -265,8 +328,8 @@ export function MessageCanvas({
         })}
       </motion.div>
 
-      {/* Zoom controls */}
-      <div className="fixed bottom-6 right-24 z-30 flex items-center gap-1 rounded-full bg-white/80 px-1 py-1 shadow-md backdrop-blur-md">
+      {/* Zoom controls — desktop only */}
+      <div className="fixed bottom-6 right-24 z-30 hidden items-center gap-1 rounded-full bg-white/80 px-1 py-1 shadow-md backdrop-blur-md md:flex">
         <button
           onClick={() => doZoom(-1)}
           className="flex size-7 items-center justify-center rounded-full text-gray-600 transition-colors hover:bg-gray-100"
@@ -284,23 +347,24 @@ export function MessageCanvas({
         </button>
       </div>
 
-      {/* Message count */}
-      <div className="fixed right-6 top-6 z-30 rounded-full bg-white/80 px-4 py-2 shadow-md backdrop-blur-md">
+      {/* Message count — desktop only */}
+      <div className="fixed right-6 top-6 z-30 hidden rounded-full bg-white/80 px-4 py-2 shadow-md backdrop-blur-md md:block">
         <span className="text-xs font-semibold text-gray-700">
           {messages.length} {messages.length === 1 ? "message" : "good vibes shared"}
         </span>
       </div>
 
-      {/* Pan hint */}
+      {/* Pan hint — responsive */}
       <div className="fixed bottom-6 left-1/2 z-30 flex -translate-x-1/2 items-center gap-3 rounded-xl bg-black/60 px-4 py-2 text-xs text-white/60 backdrop-blur-md">
-        <span>To Navigate Canvas</span>
-        <span className="rounded-md bg-white/10 px-2 py-0.5 font-medium text-white/80">
+        <span className="hidden md:inline">To Navigate Canvas</span>
+        <span className="hidden rounded-md bg-white/10 px-2 py-0.5 font-medium text-white/80 md:inline">
           Scroll
         </span>
-        <span>or</span>
-        <span className="rounded-md bg-white/10 px-2 py-0.5 font-medium text-white/80">
+        <span className="hidden md:inline">or</span>
+        <span className="hidden rounded-md bg-white/10 px-2 py-0.5 font-medium text-white/80 md:inline">
           Click + Drag
         </span>
+        <span className="md:hidden">Drag to pan · Pinch to zoom</span>
       </div>
     </div>
   );

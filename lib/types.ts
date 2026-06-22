@@ -7,7 +7,7 @@ export type Board = {
   theme_id: string;
   font: string;
   color: string;
-  visibility: "public" | "private" | "link";
+  visibility: "public" | "private";
   slug: string;
   is_archived: boolean;
 };
