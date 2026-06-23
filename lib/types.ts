@@ -42,3 +42,15 @@ export type CreateMessageInput = {
   color: string;
   drawing?: string;
 };
+
+export type Reaction = {
+  id: string;
+  message_id: string;
+  emoji: string;
+  created_at: string;
+};
+
+export type ReactionCount = {
+  emoji: string;
+  count: number;
+};

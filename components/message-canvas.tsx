@@ -10,6 +10,8 @@ import {
   animate,
 } from "motion/react";
 import { StrokeRenderer } from "./drawing-canvas";
+import { EmojiReactions } from "./emoji-reactions";
+import { useReactions } from "@/hooks/use-reactions";
 import type { Message } from "@/lib/types";
 
 type CardPos = { x: number; y: number; rot: number; w: number };
@@ -74,6 +76,9 @@ export function MessageCanvas({
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [spaceHeld, setSpaceHeld] = useState(false);
   const [zoom, setZoom] = useState(1.4);
+
+  const messageIds = messages.map((m) => m.id);
+  const { data: reactionCounts } = useReactions(messageIds);
 
   const layoutRef = useRef<{ count: number; data: ReturnType<typeof layoutCards> } | null>(null);
 
@@ -323,6 +328,12 @@ export function MessageCanvas({
                 </p>
               )}
               <p className="mt-auto pt-3 text-[11px] text-gray-400">{msg.author_name}</p>
+              <div className="pt-1.5">
+                <EmojiReactions
+                  messageId={msg.id}
+                  reactions={reactionCounts?.[msg.id] || []}
+                />
+              </div>
             </motion.div>
           );
         })}
