@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Plus, TextAa, Scribble, X, Lock } from "@phosphor-icons/react";
+import { Plus, TextAa, Scribble, X, Lock, Sparkle } from "@phosphor-icons/react";
+import Link from "next/link";
 import { ThemePreview } from "@/components/theme-previews";
 import { themes, type Theme } from "@/components/theme-selector";
 import { DrawingCanvas, StrokeRenderer, type Stroke } from "@/components/drawing-canvas";
@@ -131,6 +132,17 @@ export function PublicBoard({
             </h1>
           </div>
         </header>
+
+        {/* Mobile CTA */}
+        <div className="pointer-events-none fixed inset-x-0 top-14 z-20 flex justify-center">
+          <Link
+            href="/boards/new"
+            className="pointer-events-auto flex items-center gap-1.5 rounded-full bg-white/80 px-3 py-1.5 text-[11px] font-medium text-gray-700 shadow-sm backdrop-blur-md transition-colors active:bg-white"
+          >
+            <Sparkle size={12} weight="fill" className="text-pink-500" />
+            Create your own board
+          </Link>
+        </div>
 
         {/* Mobile messages — canvas */}
         {!canViewMessages ? (
@@ -327,16 +339,25 @@ export function PublicBoard({
           </div>
         )}
 
-        {/* Creator pill */}
-        <div className="fixed bottom-6 left-6 z-30 flex items-center gap-2 rounded-full bg-white/80 px-3 py-1.5 shadow-md backdrop-blur-md">
-          {creator.avatar_url ? (
-            <Image src={creator.avatar_url} alt={creator.name} width={22} height={22} className="rounded-full" />
-          ) : (
-            <div className="flex size-[22px] items-center justify-center rounded-full bg-pink-100 text-[10px] font-semibold text-pink-600">
-              {creator.name.charAt(0).toUpperCase()}
-            </div>
-          )}
-          <span className="text-xs font-medium text-gray-700">by {creator.name}</span>
+        {/* Creator pill + CTA */}
+        <div className="fixed bottom-6 left-6 z-30 flex items-center gap-2">
+          <div className="flex items-center gap-2 rounded-full bg-white/80 px-3 py-1.5 shadow-md backdrop-blur-md">
+            {creator.avatar_url ? (
+              <Image src={creator.avatar_url} alt={creator.name} width={22} height={22} className="rounded-full" />
+            ) : (
+              <div className="flex size-[22px] items-center justify-center rounded-full bg-pink-100 text-[10px] font-semibold text-pink-600">
+                {creator.name.charAt(0).toUpperCase()}
+              </div>
+            )}
+            <span className="text-xs font-medium text-gray-700">by {creator.name}</span>
+          </div>
+          <Link
+            href="/boards/new"
+            className="flex items-center gap-1.5 rounded-full bg-white/80 px-3 py-1.5 shadow-md backdrop-blur-md text-xs font-medium text-gray-700 transition-colors hover:bg-white"
+          >
+            <Sparkle size={13} weight="fill" className="text-pink-500" />
+            Create yours
+          </Link>
         </div>
 
         {/* Desktop FAB */}

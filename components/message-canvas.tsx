@@ -355,7 +355,7 @@ export function MessageCanvas({
                   {msg.content}
                 </p>
               )}
-              <p className="mt-auto pt-3 text-[11px] text-gray-400">{msg.author_name}</p>
+              <p className="mt-auto pt-3 text-[11px] text-gray-700/60">{msg.author_name}</p>
               <div className="pt-1.5">
                 <EmojiReactions
                   messageId={msg.id}
