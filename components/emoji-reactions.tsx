@@ -1,12 +1,34 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef, createContext, useContext, useCallback } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Smiley } from "@phosphor-icons/react";
 import { useAddReaction, useRemoveReaction } from "@/hooks/use-reactions";
 import type { ReactionCount } from "@/lib/types";
 
 const EMOJI_OPTIONS = ["❤️", "🔥", "😂", "👏", "😍", "🎉", "😢", "🤗", "💯"];
+
+const PickerContext = createContext<{
+  openId: string | null;
+  setOpenId: (id: string | null) => void;
+}>({ openId: null, setOpenId: () => {} });
+
+export function EmojiPickerProvider({ children }: { children: React.ReactNode }) {
+  const [openId, setOpenId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!openId) return;
+    const close = () => setOpenId(null);
+    document.addEventListener("pointerdown", close);
+    return () => document.removeEventListener("pointerdown", close);
+  }, [openId]);
+
+  return (
+    <PickerContext.Provider value={{ openId, setOpenId }}>
+      {children}
+    </PickerContext.Provider>
+  );
+}
 
 export function EmojiReactions({
   messageId,
@@ -15,10 +37,16 @@ export function EmojiReactions({
   messageId: string;
   reactions: ReactionCount[];
 }) {
-  const [showPicker, setShowPicker] = useState(false);
+  const { openId, setOpenId } = useContext(PickerContext);
+  const showPicker = openId === messageId;
   const [myReaction, setMyReaction] = useState<{ emoji: string; reactionId: string } | null>(null);
   const addReaction = useAddReaction();
   const removeReaction = useRemoveReaction();
+  const pickerRef = useRef<HTMLDivElement>(null);
+
+  const closePicker = useCallback(() => {
+    if (showPicker) setOpenId(null);
+  }, [showPicker, setOpenId]);
 
   const handleReact = (emoji: string) => {
     if (addReaction.isPending || removeReaction.isPending) return;
@@ -28,7 +56,7 @@ export function EmojiReactions({
         { reactionId: myReaction.reactionId, messageId, emoji },
         { onSuccess: () => setMyReaction(null) }
       );
-      setShowPicker(false);
+      closePicker();
       return;
     }
 
@@ -50,7 +78,7 @@ export function EmojiReactions({
         { onSuccess: (data) => setMyReaction({ emoji, reactionId: data.id }) }
       );
     }
-    setShowPicker(false);
+    closePicker();
   };
 
   return (
@@ -58,6 +86,7 @@ export function EmojiReactions({
       className="flex flex-wrap items-center gap-1"
       onClick={(e) => e.stopPropagation()}
       onMouseDown={(e) => e.stopPropagation()}
+      onPointerDown={(e) => e.stopPropagation()}
     >
       {reactions.map((r) => (
         <motion.button
@@ -86,9 +115,9 @@ export function EmojiReactions({
         </motion.button>
       ))}
 
-      <div className="relative">
+      <div className="relative" ref={pickerRef}>
         <button
-          onClick={() => setShowPicker(!showPicker)}
+          onClick={() => setOpenId(showPicker ? null : messageId)}
           className="flex size-6 items-center justify-center rounded-full bg-white/40 text-gray-400 backdrop-blur-sm transition-colors hover:bg-white/70 hover:text-gray-600"
         >
           <Smiley size={14} />

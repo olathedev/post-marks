@@ -10,7 +10,7 @@ import {
   animate,
 } from "motion/react";
 import { StrokeRenderer } from "./drawing-canvas";
-import { EmojiReactions } from "./emoji-reactions";
+import { EmojiReactions, EmojiPickerProvider } from "./emoji-reactions";
 import { useReactions } from "@/hooks/use-reactions";
 import type { Message } from "@/lib/types";
 
@@ -274,6 +274,7 @@ export function MessageCanvas({
   );
 
   return (
+    <EmojiPickerProvider>
     <div
       ref={containerRef}
       className="fixed inset-0 overflow-hidden"
@@ -406,5 +407,6 @@ export function MessageCanvas({
         <span className="md:hidden">Drag to pan · Pinch to zoom</span>
       </div>
     </div>
+    </EmojiPickerProvider>
   );
 }
