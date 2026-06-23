@@ -6,7 +6,7 @@ import { Smiley } from "@phosphor-icons/react";
 import { useAddReaction, useRemoveReaction } from "@/hooks/use-reactions";
 import type { ReactionCount } from "@/lib/types";
 
-const EMOJI_OPTIONS = ["❤️", "🔥", "😂", "👏", "😍", "🎉"];
+const EMOJI_OPTIONS = ["❤️", "🔥", "😂", "👏", "😍", "🎉", "😢", "🤗", "💯"];
 
 export function EmojiReactions({
   messageId,
