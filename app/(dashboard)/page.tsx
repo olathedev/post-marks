@@ -12,6 +12,7 @@ import {
 } from "@phosphor-icons/react";
 import { useBoards } from "@/hooks/use-boards";
 import { ShareModal } from "@/components/share-modal";
+import { BoardMenu } from "@/components/board-menu";
 import { toast } from "sonner";
 
 const tabs = ["All", "Active", "Shared", "Archived"];
@@ -133,6 +134,7 @@ export default function Home() {
                         <ShareNetwork size={14} />
                         Share
                       </button>
+                      <BoardMenu board={board} />
                     </div>
                   </div>
                 );
@@ -187,6 +189,7 @@ export default function Home() {
                       >
                         <ShareNetwork size={16} />
                       </button>
+                      <BoardMenu board={board} />
                     </div>
                   </div>
                 </div>

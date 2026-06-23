@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getBoards, getBoard, createBoard, deleteBoard } from "@/services/boards";
+import { getBoards, getBoard, createBoard, updateBoard, deleteBoard } from "@/services/boards";
 import type { CreateBoardInput } from "@/lib/types";
 
 export function useBoards() {
@@ -22,6 +22,18 @@ export function useCreateBoard() {
 
   return useMutation({
     mutationFn: (input: CreateBoardInput) => createBoard(input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["boards"] });
+    },
+  });
+}
+
+export function useUpdateBoard() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, ...input }: { id: string; title?: string; description?: string | null; visibility?: string }) =>
+      updateBoard(id, input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["boards"] });
     },

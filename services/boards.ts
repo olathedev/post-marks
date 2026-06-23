@@ -86,6 +86,30 @@ export async function getBoard(id: string): Promise<Board> {
   return data;
 }
 
+export async function updateBoard(
+  id: string,
+  input: { title?: string; description?: string | null; visibility?: string }
+): Promise<Board> {
+  const supabase = createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) throw new Error("Not authenticated");
+
+  const { data, error } = await supabase
+    .from("boards")
+    .update(input)
+    .eq("id", id)
+    .eq("user_id", user.id)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
 export async function deleteBoard(id: string): Promise<void> {
   const supabase = createClient();
 
