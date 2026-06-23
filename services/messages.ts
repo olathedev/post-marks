@@ -33,6 +33,7 @@ export async function createMessage(input: CreateMessageInput): Promise<Message>
     rotation,
   };
   if (input.drawing) row.drawing = input.drawing;
+  if (input.parent_id) row.parent_id = input.parent_id;
 
   console.log("[createMessage] inserting:", { ...row, drawing: row.drawing ? "(drawing data)" : undefined });
 

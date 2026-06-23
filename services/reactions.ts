@@ -43,10 +43,11 @@ export async function addReaction(messageId: string, emoji: string): Promise<str
 export async function removeReaction(reactionId: string): Promise<void> {
   const supabase = createClient();
 
-  const { error } = await supabase
+  const { error, count } = await supabase
     .from("reactions")
-    .delete()
+    .delete({ count: "exact" })
     .eq("id", reactionId);
 
   if (error) throw error;
+  if (count === 0) throw new Error("Reaction not deleted — check RLS policies");
 }

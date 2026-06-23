@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Plus, TextAa, Scribble, X, Lock, Sparkle } from "@phosphor-icons/react";
+import { Plus, TextAa, Scribble, X, Lock, Sparkle, ArrowBendLeftDown } from "@phosphor-icons/react";
 import Link from "next/link";
 import { ThemePreview } from "@/components/theme-previews";
 import { themes, type Theme } from "@/components/theme-selector";
@@ -48,6 +48,7 @@ export function PublicBoard({
   const [drawingStrokes, setDrawingStrokes] = useState<Stroke[]>([]);
   const [selectedColor, setSelectedColor] = useState(noteColors[0]);
   const [shareCard, setShareCard] = useState<Message | null>(null);
+  const [replyTo, setReplyTo] = useState<Message | null>(null);
 
   const isSolid = board.theme_id === "solid";
   const siteUrl = typeof window !== "undefined" ? window.location.origin : "";
@@ -56,6 +57,7 @@ export function PublicBoard({
     setShowForm(false);
     setMode("text");
     setDrawingStrokes([]);
+    setReplyTo(null);
   }, []);
 
   const handleSubmit = useCallback(() => {
@@ -68,22 +70,24 @@ export function PublicBoard({
         content: mode === "text" ? content.trim() : null,
         color: selectedColor,
         drawing: mode === "draw" ? JSON.stringify(drawingStrokes) : undefined,
+        parent_id: replyTo?.id,
       },
       {
         onSuccess: () => {
-          toast.success("Message posted!");
+          toast.success(replyTo ? "Reply posted!" : "Message posted!");
           setContent("");
           setName("");
           setDrawingStrokes([]);
           setMode("text");
           setShowForm(false);
+          setReplyTo(null);
         },
         onError: () => {
           toast.error("Failed to post message");
         },
       }
     );
-  }, [content, name, selectedColor, board.id, createMessage, mode, drawingStrokes]);
+  }, [content, name, selectedColor, board.id, createMessage, mode, drawingStrokes, replyTo]);
 
   useEffect(() => {
     if (!showForm) return;
@@ -94,6 +98,11 @@ export function PublicBoard({
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, [showForm, handleClose, handleSubmit]);
+
+  const handleReplyTo = useCallback((msg: Message) => {
+    setReplyTo(msg);
+    setShowForm(true);
+  }, []);
 
   return (
     <div className="relative flex min-h-screen flex-col overflow-hidden">
@@ -160,7 +169,7 @@ export function PublicBoard({
             <div className="size-5 animate-spin rounded-full border-2 border-white/20 border-t-white/60" />
           </div>
         ) : messages && messages.length > 0 ? (
-          <MessageCanvas messages={messages} font={board.font} onCardClick={setShareCard} />
+          <MessageCanvas messages={messages} font={board.font} onCardClick={setShareCard} onReplyTo={handleReplyTo} />
         ) : (
           <div className="flex flex-1 flex-col items-center justify-center">
             <p className="text-sm" style={{ color: theme.subtitleColor }}>
@@ -195,11 +204,24 @@ export function PublicBoard({
             <div className="flex flex-col items-center px-5 pt-3 pb-1">
               <div className="mb-2 h-1 w-10 rounded-full bg-gray-200" />
               <div className="flex w-full items-center justify-between">
-                <span className="text-sm font-semibold text-gray-900">Leave a message</span>
+                <span className="text-sm font-semibold text-gray-900">
+                  {replyTo ? "Stick to card" : "Leave a message"}
+                </span>
                 <button onClick={handleClose} className="rounded-full cursor-pointer bg-gray-100 p-1.5 text-gray-500">
                   <X size={14} weight="bold" />
                 </button>
               </div>
+              {replyTo && (
+                <div className="mt-2 flex items-center gap-2 rounded-lg bg-gray-50 px-3 py-2">
+                  <ArrowBendLeftDown size={14} className="shrink-0 text-gray-400" />
+                  <p className="truncate text-xs text-gray-500">
+                    Replying to <span className="font-medium text-gray-700">{replyTo.author_name}</span>: {replyTo.content}
+                  </p>
+                  <button onClick={() => setReplyTo(null)} className="shrink-0 text-gray-400 hover:text-gray-600">
+                    <X size={12} weight="bold" />
+                  </button>
+                </div>
+              )}
             </div>
 
             <div className="flex-1 overflow-y-auto px-5 pb-5 pt-3">
@@ -330,7 +352,7 @@ export function PublicBoard({
             <div className="size-5 animate-spin rounded-full border-2 border-white/20 border-t-white/60" />
           </div>
         ) : messages && messages.length > 0 ? (
-          <MessageCanvas messages={messages} font={board.font} onCardClick={setShareCard} />
+          <MessageCanvas messages={messages} font={board.font} onCardClick={setShareCard} onReplyTo={handleReplyTo} />
         ) : (
           <div className="flex flex-1 flex-col items-center justify-center">
             <p className="text-sm" style={{ color: theme.subtitleColor }}>
@@ -435,6 +457,17 @@ export function PublicBoard({
                 >
                   <div className="mb-4">
                     <h3 className="text-xl font-medium text-gray-800">{board.title}</h3>
+                    {replyTo && (
+                      <div className="mt-2 flex items-center gap-2">
+                        <ArrowBendLeftDown size={14} className="shrink-0 text-gray-400" />
+                        <p className="truncate text-sm text-gray-500">
+                          Sticking to <span className="font-medium text-gray-700">{replyTo.author_name}</span>&apos;s card
+                        </p>
+                        <button onClick={() => setReplyTo(null)} className="shrink-0 text-gray-400 hover:text-gray-600">
+                          <X size={12} weight="bold" />
+                        </button>
+                      </div>
+                    )}
                   </div>
 
                   {mode === "text" ? (

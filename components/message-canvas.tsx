@@ -1,54 +1,53 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
-import { Minus, Plus } from "@phosphor-icons/react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import { Minus, Plus, ArrowBendLeftDown, X } from "@phosphor-icons/react";
 import {
   motion,
   useMotionValue,
   useSpring,
   useTransform,
   animate,
+  AnimatePresence,
 } from "motion/react";
 import { StrokeRenderer } from "./drawing-canvas";
 import { EmojiReactions, EmojiPickerProvider } from "./emoji-reactions";
 import { useReactions } from "@/hooks/use-reactions";
 import type { Message } from "@/lib/types";
 
-type CardPos = { x: number; y: number; rot: number; w: number };
+type CardPos = { x: number; y: number; rot: number; w: number; h: number };
 
 const CANVAS_W = 4000;
 const CANVAS_H = 3000;
+const CARD_H = 180;
 
-function layoutCards(count: number): { positions: CardPos[]; width: number; height: number } {
-  if (count === 0) return { positions: [], width: CANVAS_W, height: CANVAS_H };
+function layoutCards(
+  roots: Message[]
+): { positions: CardPos[]; width: number; height: number } {
+  if (roots.length === 0) return { positions: [], width: CANVAS_W, height: CANVAS_H };
 
   const cardW = 280;
-  const cardH = 220;
+  const cardH = CARD_H;
   const overlapX = 80;
   const overlapY = 50;
 
-  const cols = Math.ceil(Math.sqrt(count * 1.4));
-  const rows = Math.ceil(count / cols);
-
+  const cols = Math.max(1, Math.ceil(Math.sqrt(roots.length * 1.4)));
   const stepX = cardW - overlapX;
   const stepY = cardH - overlapY;
 
   const gridW = cols * stepX + cardW;
-  const gridH = rows * stepY + cardH;
+  const gridH = Math.ceil(roots.length / cols) * stepY + cardH;
 
-  // Center the grid on the canvas
   const offsetX = (CANVAS_W - gridW) / 2;
   const offsetY = (CANVAS_H - gridH) / 2;
 
   const positions: CardPos[] = [];
 
-  for (let i = 0; i < count; i++) {
+  for (let i = 0; i < roots.length; i++) {
     const col = i % cols;
     const row = Math.floor(i / cols);
-
     const baseX = offsetX + col * stepX;
     const baseY = offsetY + row * stepY;
-
     const jX = (Math.random() - 0.5) * 40;
     const jY = (Math.random() - 0.5) * 30;
 
@@ -57,6 +56,7 @@ function layoutCards(count: number): { positions: CardPos[]; width: number; heig
       y: baseY + jY,
       rot: Math.round((Math.random() - 0.5) * 10),
       w: 250 + Math.floor(Math.random() * 60),
+      h: cardH,
     });
   }
 
@@ -67,34 +67,64 @@ export function MessageCanvas({
   messages,
   font,
   onCardClick,
+  onReplyTo,
 }: {
   messages: Message[];
   font: string;
   onCardClick?: (msg: Message) => void;
+  onReplyTo?: (msg: Message) => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [focusedId, setFocusedId] = useState<string | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [spaceHeld, setSpaceHeld] = useState(false);
   const [zoom, setZoom] = useState(1.4);
+  const [dragId, setDragId] = useState<string | null>(null);
   const isTouchDevice = useRef(false);
+
+  // Split messages into roots and replies
+  const roots = useMemo(() => messages.filter((m) => !m.parent_id), [messages]);
+  const repliesByParent = useMemo(() => {
+    const map = new Map<string, Message[]>();
+    for (const msg of messages) {
+      if (!msg.parent_id) continue;
+      const list = map.get(msg.parent_id) || [];
+      list.push(msg);
+      map.set(msg.parent_id, list);
+    }
+    return map;
+  }, [messages]);
 
   const messageIds = messages.map((m) => m.id);
   const { data: reactionCounts } = useReactions(messageIds);
 
-  const layoutRef = useRef<{ count: number; data: ReturnType<typeof layoutCards> } | null>(null);
+  // Layout only root cards
+  const rootIds = roots.map((m) => m.id).join(",");
+  const layoutRef = useRef<{ ids: string; data: ReturnType<typeof layoutCards> } | null>(null);
 
-  if (!layoutRef.current || layoutRef.current.count !== messages.length) {
+  if (!layoutRef.current || layoutRef.current.ids !== rootIds) {
     const prev = layoutRef.current?.data.positions ?? [];
-    const next = layoutCards(messages.length);
-    // Preserve existing card positions, only generate for new ones
-    for (let i = 0; i < Math.min(prev.length, next.positions.length); i++) {
-      next.positions[i] = prev[i];
+    const prevIds = layoutRef.current?.ids.split(",") ?? [];
+    const next = layoutCards(roots);
+    for (let i = 0; i < roots.length; i++) {
+      const oldIdx = prevIds.indexOf(roots[i].id);
+      if (oldIdx >= 0 && prev[oldIdx]) {
+        next.positions[i] = prev[oldIdx];
+      }
     }
-    layoutRef.current = { count: messages.length, data: next };
+    layoutRef.current = { ids: rootIds, data: next };
   }
 
-  const { positions, width: canvasW, height: canvasH } = layoutRef.current.data;
+  const [cardPositions, setCardPositions] = useState<CardPos[]>(layoutRef.current.data.positions);
+
+  useEffect(() => {
+    if (layoutRef.current) {
+      setCardPositions(layoutRef.current.data.positions);
+    }
+  }, [rootIds]);
+
+  const { width: canvasW, height: canvasH } = layoutRef.current.data;
 
   const panX = useMotionValue(0);
   const panY = useMotionValue(0);
@@ -106,7 +136,6 @@ export function MessageCanvas({
   const zoomRef = useRef(zoom);
   zoomRef.current = zoom;
 
-  // Center on mount
   useEffect(() => {
     if (!containerRef.current) return;
     const rect = containerRef.current.getBoundingClientRect();
@@ -116,14 +145,12 @@ export function MessageCanvas({
     panY.set(cy);
   }, [canvasW, canvasH, panX, panY]);
 
-  // Detect touch device
   useEffect(() => {
     const onTouch = () => { isTouchDevice.current = true; };
     window.addEventListener("touchstart", onTouch, { once: true });
     return () => window.removeEventListener("touchstart", onTouch);
   }, []);
 
-  // Prevent browser back/forward swipe gestures
   useEffect(() => {
     document.body.style.overscrollBehavior = "none";
     document.documentElement.style.overscrollBehavior = "none";
@@ -133,7 +160,6 @@ export function MessageCanvas({
     };
   }, []);
 
-  // Space key
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
       if (e.code === "Space" && !e.repeat && !(e.target as HTMLElement).closest("input,textarea")) {
@@ -152,13 +178,78 @@ export function MessageCanvas({
     };
   }, []);
 
-  // Pan via drag (mouse)
+  // Card dragging
+  const cardDragStart = useRef<{ x: number; y: number; posX: number; posY: number; idx: number } | null>(null);
+  const didDrag = useRef(false);
+  const DRAG_THRESHOLD = 5;
+
+  const handleCardDragStart = useCallback(
+    (e: React.MouseEvent | React.PointerEvent, idx: number) => {
+      e.stopPropagation();
+      e.preventDefault();
+      const pos = cardPositions[idx];
+      if (!pos) return;
+      cardDragStart.current = { x: e.clientX, y: e.clientY, posX: pos.x, posY: pos.y, idx };
+      didDrag.current = false;
+    },
+    [cardPositions]
+  );
+
+  const handleCardDragMove = useCallback(
+    (e: MouseEvent) => {
+      if (!cardDragStart.current) return;
+      const { x, y, posX, posY, idx } = cardDragStart.current;
+      const z = zoomRef.current;
+      const dx = (e.clientX - x) / z;
+      const dy = (e.clientY - y) / z;
+
+      if (!didDrag.current && Math.abs(e.clientX - x) + Math.abs(e.clientY - y) > DRAG_THRESHOLD) {
+        didDrag.current = true;
+        setDragId(roots[idx]?.id ?? null);
+      }
+
+      if (didDrag.current) {
+        setCardPositions((prev) => {
+          const next = [...prev];
+          next[idx] = { ...next[idx], x: posX + dx, y: posY + dy };
+          return next;
+        });
+      }
+    },
+    [roots]
+  );
+
+  const handleCardDragEnd = useCallback(() => {
+    if (cardDragStart.current && didDrag.current) {
+      const idx = cardDragStart.current.idx;
+      setCardPositions((prev) => {
+        if (layoutRef.current) {
+          layoutRef.current.data.positions[idx] = prev[idx];
+        }
+        return prev;
+      });
+    }
+    cardDragStart.current = null;
+    setDragId(null);
+  }, []);
+
+  useEffect(() => {
+    window.addEventListener("mousemove", handleCardDragMove);
+    window.addEventListener("mouseup", handleCardDragEnd);
+    return () => {
+      window.removeEventListener("mousemove", handleCardDragMove);
+      window.removeEventListener("mouseup", handleCardDragEnd);
+    };
+  }, [handleCardDragMove, handleCardDragEnd]);
+
+  // Canvas panning
   const dragStart = useRef<{ x: number; y: number; px: number; py: number } | null>(null);
   const isPanning = useRef(false);
 
   const handleMouseDown = useCallback(
     (e: React.MouseEvent) => {
       if (e.button !== 0) return;
+      if ((e.target as HTMLElement).closest("[data-card]")) return;
       e.preventDefault();
       isPanning.current = true;
       dragStart.current = { x: e.clientX, y: e.clientY, px: panX.get(), py: panY.get() };
@@ -243,11 +334,9 @@ export function MessageCanvas({
     };
   }, [panX, panY, scaleVal]);
 
-  // Scroll/trackpad pans
   const handleWheel = useCallback(
     (e: React.WheelEvent) => {
       e.preventDefault();
-      // Pinch-zoom (ctrlKey is set for trackpad pinch)
       if (e.ctrlKey) {
         const delta = e.deltaY > 0 ? -0.08 : 0.08;
         const next = Math.min(2, Math.max(0.3, zoom + delta));
@@ -255,7 +344,6 @@ export function MessageCanvas({
         scaleVal.set(next);
         return;
       }
-      // Otherwise pan
       panX.set(panX.get() - e.deltaX / zoom);
       panY.set(panY.get() - e.deltaY / zoom);
     },
@@ -278,7 +366,7 @@ export function MessageCanvas({
     <div
       ref={containerRef}
       className="fixed inset-0 overflow-hidden"
-      style={{ cursor: isPanning.current ? "grabbing" : "grab", overscrollBehavior: "none" }}
+      style={{ cursor: dragId ? "grabbing" : isPanning.current ? "grabbing" : "grab", overscrollBehavior: "none", userSelect: "none" }}
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
@@ -287,6 +375,7 @@ export function MessageCanvas({
       onClick={(e) => {
         if (!(e.target as HTMLElement).closest("[data-card]")) {
           setFocusedId(null);
+          setExpandedId(null);
         }
       }}
     >
@@ -298,15 +387,20 @@ export function MessageCanvas({
           transform: transformStr,
         }}
       >
-        {messages.map((msg, i) => {
-          const pos = positions[i];
+        {roots.map((msg, i) => {
+          const pos = cardPositions[i];
           if (!pos) return null;
           const isHovered = hoveredId === msg.id;
           const isFocused = focusedId === msg.id;
-          const isLifted = isHovered || isFocused;
+          const isDragging = dragId === msg.id;
+          const isLifted = isHovered || isFocused || isDragging;
           const hasDrawing = (msg as Record<string, unknown>).drawing;
+          const sticks = repliesByParent.get(msg.id) || [];
+          const sticksCount = sticks.length;
+          const isExpanded = expandedId === msg.id;
 
           const handleCardClick = () => {
+            if (didDrag.current) return;
             if (!isTouchDevice.current) {
               onCardClick?.(msg);
               return;
@@ -319,51 +413,151 @@ export function MessageCanvas({
           };
 
           return (
-            <motion.div
-              key={msg.id}
-              data-card
-              onMouseEnter={() => setHoveredId(msg.id)}
-              onMouseLeave={() => setHoveredId(null)}
-              onClick={handleCardClick}
-              className="absolute flex flex-col justify-between p-5"
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{
-                opacity: 1,
-                scale: isLifted ? 1.06 : 1,
-                rotate: isLifted ? 0 : pos.rot,
-              }}
-              transition={{ type: "spring", stiffness: 400, damping: 25 }}
-              style={{
-                left: pos.x,
-                top: pos.y,
-                width: pos.w,
-                minHeight: 140,
-                backgroundColor: msg.color || "#ffffff",
-                fontFamily: font,
-                zIndex: isLifted ? 100 : i,
-                boxShadow: isLifted
-                  ? "0 20px 40px rgba(0,0,0,0.18)"
-                  : "0 1px 4px rgba(0,0,0,0.06)",
-              }}
-            >
-              {hasDrawing ? (
-                <StrokeRenderer
-                  strokes={JSON.parse(hasDrawing as string)}
-                  className="w-full"
-                />
-              ) : (
-                <p className="text-sm leading-relaxed text-gray-800">
-                  {msg.content}
-                </p>
-              )}
-              <p className="mt-auto pt-3 text-[11px] text-gray-700/60">{msg.author_name}</p>
-              <div className="pt-1.5">
-                <EmojiReactions
-                  messageId={msg.id}
-                  reactions={reactionCounts?.[msg.id] || []}
-                />
-              </div>
-            </motion.div>
+            <div key={msg.id}>
+              <motion.div
+                data-card
+                onMouseEnter={() => setHoveredId(msg.id)}
+                onMouseLeave={() => setHoveredId(null)}
+                onClick={handleCardClick}
+                onMouseDown={(e) => handleCardDragStart(e, i)}
+                className="absolute flex flex-col justify-between p-5"
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{
+                  opacity: 1,
+                  scale: isLifted ? 1.06 : 1,
+                  rotate: isLifted ? 0 : pos.rot,
+                }}
+                transition={{ type: "spring", stiffness: 400, damping: 25 }}
+                style={{
+                  left: pos.x,
+                  top: pos.y,
+                  width: pos.w,
+                  minHeight: 140,
+                  backgroundColor: msg.color || "#ffffff",
+                  fontFamily: font,
+                  cursor: isDragging ? "grabbing" : "grab",
+                  zIndex: isDragging ? 200 : isExpanded ? 150 : isLifted ? 100 : i,
+                  boxShadow: isDragging
+                    ? "0 30px 60px rgba(0,0,0,0.25)"
+                    : isLifted
+                      ? "0 20px 40px rgba(0,0,0,0.18)"
+                      : "0 1px 4px rgba(0,0,0,0.06)",
+                }}
+              >
+                {hasDrawing ? (
+                  <StrokeRenderer
+                    strokes={JSON.parse(hasDrawing as string)}
+                    className="w-full"
+                  />
+                ) : (
+                  <p className="text-sm leading-relaxed text-gray-800">
+                    {msg.content}
+                  </p>
+                )}
+                <div className="mt-auto flex items-center justify-between pt-3">
+                  <p className="text-[11px] text-gray-700/60">{msg.author_name}</p>
+                  <div className="flex items-center gap-1.5">
+                    {sticksCount > 0 && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setExpandedId(isExpanded ? null : msg.id);
+                        }}
+                        onMouseDown={(e) => e.stopPropagation()}
+                        onPointerDown={(e) => e.stopPropagation()}
+                        className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold transition-colors ${
+                          isExpanded
+                            ? "bg-black text-white"
+                            : "bg-black/5 text-gray-500 hover:bg-black/10"
+                        }`}
+                      >
+                        <ArrowBendLeftDown size={10} weight="bold" />
+                        {sticksCount} {sticksCount === 1 ? "stick" : "sticks"}
+                      </button>
+                    )}
+                    {onReplyTo && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onReplyTo(msg);
+                        }}
+                        onMouseDown={(e) => e.stopPropagation()}
+                        onPointerDown={(e) => e.stopPropagation()}
+                        className="flex items-center gap-1 rounded-full bg-black/5 px-2 py-0.5 text-[10px] font-medium text-gray-500 transition-colors hover:bg-black/10 hover:text-gray-700"
+                      >
+                        <ArrowBendLeftDown size={11} weight="bold" />
+                        Stick
+                      </button>
+                    )}
+                  </div>
+                </div>
+                <div className="pt-1.5">
+                  <EmojiReactions
+                    messageId={msg.id}
+                    reactions={reactionCounts?.[msg.id] || []}
+                  />
+                </div>
+              </motion.div>
+
+              {/* Expanded sticks */}
+              <AnimatePresence>
+                {isExpanded && sticks.map((reply, ri) => {
+                  const replyDrawing = (reply as Record<string, unknown>).drawing;
+                  const offsetX = pos.w + 16;
+                  const offsetY = ri * 160;
+
+                  return (
+                    <motion.div
+                      key={reply.id}
+                      data-card
+                      initial={{ opacity: 0, x: pos.x + offsetX - 30, y: pos.y + offsetY, scale: 0.85 }}
+                      animate={{ opacity: 1, x: pos.x + offsetX, y: pos.y + offsetY, scale: 1 }}
+                      exit={{ opacity: 0, x: pos.x + offsetX - 30, scale: 0.85 }}
+                      transition={{ type: "spring", stiffness: 400, damping: 30, delay: ri * 0.05 }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onCardClick?.(reply);
+                      }}
+                      className="absolute flex flex-col justify-between p-4"
+                      style={{
+                        width: pos.w - 20,
+                        minHeight: 120,
+                        backgroundColor: reply.color || "#ffffff",
+                        fontFamily: font,
+                        zIndex: 151 + ri,
+                        boxShadow: "0 4px 16px rgba(0,0,0,0.12)",
+                        cursor: "pointer",
+                      }}
+                    >
+                      <div className="mb-1.5 flex items-center gap-1 text-[10px] text-gray-400">
+                        <ArrowBendLeftDown size={10} weight="bold" />
+                        <span>
+                          sticking to{" "}
+                          <span className="font-medium text-gray-500">{msg.author_name}</span>
+                        </span>
+                      </div>
+                      {replyDrawing ? (
+                        <StrokeRenderer
+                          strokes={JSON.parse(replyDrawing as string)}
+                          className="w-full"
+                        />
+                      ) : (
+                        <p className="text-sm leading-relaxed text-gray-800">
+                          {reply.content}
+                        </p>
+                      )}
+                      <p className="mt-auto pt-2 text-[11px] text-gray-700/60">{reply.author_name}</p>
+                      <div className="pt-1.5">
+                        <EmojiReactions
+                          messageId={reply.id}
+                          reactions={reactionCounts?.[reply.id] || []}
+                        />
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </AnimatePresence>
+            </div>
           );
         })}
       </motion.div>

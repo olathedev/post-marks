@@ -32,6 +32,7 @@ export type Message = {
   position_x: number;
   position_y: number;
   rotation: number;
+  parent_id: string | null;
   created_at: string;
 };
 
@@ -41,6 +42,7 @@ export type CreateMessageInput = {
   content: string | null;
   color: string;
   drawing?: string;
+  parent_id?: string;
 };
 
 export type Reaction = {
