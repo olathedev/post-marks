@@ -74,8 +74,10 @@ export function MessageCanvas({
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
+  const [focusedId, setFocusedId] = useState<string | null>(null);
   const [spaceHeld, setSpaceHeld] = useState(false);
   const [zoom, setZoom] = useState(1.4);
+  const isTouchDevice = useRef(false);
 
   const messageIds = messages.map((m) => m.id);
   const { data: reactionCounts } = useReactions(messageIds);
@@ -113,6 +115,13 @@ export function MessageCanvas({
     panX.set(cx);
     panY.set(cy);
   }, [canvasW, canvasH, panX, panY]);
+
+  // Detect touch device
+  useEffect(() => {
+    const onTouch = () => { isTouchDevice.current = true; };
+    window.addEventListener("touchstart", onTouch, { once: true });
+    return () => window.removeEventListener("touchstart", onTouch);
+  }, []);
 
   // Prevent browser back/forward swipe gestures
   useEffect(() => {
@@ -274,6 +283,11 @@ export function MessageCanvas({
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseUp}
       onWheel={handleWheel}
+      onClick={(e) => {
+        if (!(e.target as HTMLElement).closest("[data-card]")) {
+          setFocusedId(null);
+        }
+      }}
     >
       <motion.div
         className="absolute origin-top-left will-change-transform"
@@ -287,7 +301,21 @@ export function MessageCanvas({
           const pos = positions[i];
           if (!pos) return null;
           const isHovered = hoveredId === msg.id;
+          const isFocused = focusedId === msg.id;
+          const isLifted = isHovered || isFocused;
           const hasDrawing = (msg as Record<string, unknown>).drawing;
+
+          const handleCardClick = () => {
+            if (!isTouchDevice.current) {
+              onCardClick?.(msg);
+              return;
+            }
+            if (isFocused) {
+              onCardClick?.(msg);
+              return;
+            }
+            setFocusedId(msg.id);
+          };
 
           return (
             <motion.div
@@ -295,13 +323,13 @@ export function MessageCanvas({
               data-card
               onMouseEnter={() => setHoveredId(msg.id)}
               onMouseLeave={() => setHoveredId(null)}
-              onClick={() => onCardClick?.(msg)}
+              onClick={handleCardClick}
               className="absolute flex flex-col justify-between p-5"
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{
                 opacity: 1,
-                scale: isHovered ? 1.06 : 1,
-                rotate: pos.rot,
+                scale: isLifted ? 1.06 : 1,
+                rotate: isLifted ? 0 : pos.rot,
               }}
               transition={{ type: "spring", stiffness: 400, damping: 25 }}
               style={{
@@ -311,8 +339,8 @@ export function MessageCanvas({
                 minHeight: 140,
                 backgroundColor: msg.color || "#ffffff",
                 fontFamily: font,
-                zIndex: isHovered ? 100 : i,
-                boxShadow: isHovered
+                zIndex: isLifted ? 100 : i,
+                boxShadow: isLifted
                   ? "0 20px 40px rgba(0,0,0,0.18)"
                   : "0 1px 4px rgba(0,0,0,0.06)",
               }}
