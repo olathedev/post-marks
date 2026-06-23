@@ -145,7 +145,7 @@ export function PublicBoard({
         {/* Mobile CTA */}
         <div className="pointer-events-none fixed inset-x-0 top-14 z-20 flex justify-center">
           <Link
-            href="/boards/new"
+            href="/auth"
             className="pointer-events-auto flex items-center gap-1.5 rounded-full bg-white/80 px-3 py-1.5 text-[11px] font-medium text-gray-700 shadow-sm backdrop-blur-md transition-colors active:bg-white"
           >
             <Sparkle size={12} weight="fill" className="text-pink-500" />
@@ -374,7 +374,7 @@ export function PublicBoard({
             <span className="text-xs font-medium text-gray-700">by {creator.name}</span>
           </div>
           <Link
-            href="/boards/new"
+            href="/auth"
             className="flex items-center gap-1.5 rounded-full bg-white/80 px-3 py-1.5 shadow-md backdrop-blur-md text-xs font-medium text-gray-700 transition-colors hover:bg-white"
           >
             <Sparkle size={13} weight="fill" className="text-pink-500" />
