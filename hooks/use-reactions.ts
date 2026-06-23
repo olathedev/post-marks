@@ -4,82 +4,35 @@ import { getReactionCounts, addReaction, removeReaction } from "@/services/react
 import { createClient } from "@/lib/supabase/client";
 import type { ReactionCount } from "@/lib/types";
 
-// Track reaction IDs we just inserted/deleted so realtime doesn't double-count
-const pendingIds = new Set<string>();
-
 export function useReactions(messageIds: string[]) {
   const queryClient = useQueryClient();
   const instanceId = useId();
   const stableKey = useMemo(() => [...messageIds].sort().join(","), [messageIds]);
-  const queryKey = ["reactions", stableKey];
+  const queryKey = useMemo(() => ["reactions", stableKey], [stableKey]);
 
   const query = useQuery({
     queryKey,
     queryFn: () => getReactionCounts(messageIds),
     enabled: messageIds.length > 0,
+    refetchOnWindowFocus: false,
   });
 
-  const messageIdsRef = useRef(messageIds);
-  messageIdsRef.current = messageIds;
   const queryKeyRef = useRef(queryKey);
   queryKeyRef.current = queryKey;
 
+  // Realtime: just refetch the true counts — no manual deltas
   useEffect(() => {
     if (!stableKey) return;
 
     const supabase = createClient();
-    const channelName = `reactions-${instanceId}-${Date.now()}`;
-
-    const channel = supabase.channel(channelName);
+    const channel = supabase.channel(`reactions-${instanceId}-${Date.now()}`);
 
     channel
       .on(
         "postgres_changes",
-        { event: "INSERT", schema: "public", table: "reactions" },
-        (payload) => {
-          const row = payload.new as { id: string; message_id: string; emoji: string };
-          if (!messageIdsRef.current.includes(row.message_id)) return;
-          if (pendingIds.delete(row.id)) return;
-
-          queryClient.setQueryData<Record<string, ReactionCount[]>>(queryKeyRef.current, (old) => {
-            if (!old) return old;
-            const updated = { ...old };
-            const msgReactions = [...(updated[row.message_id] || [])];
-            const idx = msgReactions.findIndex((r) => r.emoji === row.emoji);
-            if (idx >= 0) {
-              msgReactions[idx] = { ...msgReactions[idx], count: msgReactions[idx].count + 1 };
-            } else {
-              msgReactions.push({ emoji: row.emoji, count: 1 });
-            }
-            updated[row.message_id] = msgReactions;
-            return updated;
-          });
-        }
-      )
-      .on(
-        "postgres_changes",
-        { event: "DELETE", schema: "public", table: "reactions" },
-        (payload) => {
-          const row = payload.old as { id: string; message_id: string; emoji: string };
-          if (!row.message_id || !messageIdsRef.current.includes(row.message_id)) return;
-          if (pendingIds.delete(row.id)) return;
-
-          queryClient.setQueryData<Record<string, ReactionCount[]>>(queryKeyRef.current, (old) => {
-            if (!old) return old;
-            const updated = { ...old };
-            const msgReactions = [...(updated[row.message_id] || [])];
-            const idx = msgReactions.findIndex((r) => r.emoji === row.emoji);
-            if (idx >= 0) {
-              const newCount = msgReactions[idx].count - 1;
-              if (newCount <= 0) {
-                msgReactions.splice(idx, 1);
-              } else {
-                msgReactions[idx] = { ...msgReactions[idx], count: newCount };
-              }
-            }
-            updated[row.message_id] = msgReactions.length > 0 ? msgReactions : [];
-            return updated;
-          });
+        { event: "*", schema: "public", table: "reactions" },
+        () => {
+          queryClient.invalidateQueries({ queryKey: queryKeyRef.current });
         }
       )
       .subscribe();
@@ -87,9 +40,39 @@ export function useReactions(messageIds: string[]) {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [stableKey, queryClient, instanceId]);
+  }, [stableKey, instanceId, queryClient]);
 
   return query;
+}
+
+function applyOptimistic(
+  old: Record<string, ReactionCount[]> | undefined,
+  messageId: string,
+  emoji: string,
+  delta: 1 | -1
+): Record<string, ReactionCount[]> | undefined {
+  if (!old) return old;
+  const updated = { ...old };
+  const msgReactions = [...(updated[messageId] || [])];
+  const idx = msgReactions.findIndex((r) => r.emoji === emoji);
+
+  if (delta === 1) {
+    if (idx >= 0) {
+      msgReactions[idx] = { ...msgReactions[idx], count: msgReactions[idx].count + 1 };
+    } else {
+      msgReactions.push({ emoji, count: 1 });
+    }
+  } else if (idx >= 0) {
+    const newCount = msgReactions[idx].count - 1;
+    if (newCount <= 0) {
+      msgReactions.splice(idx, 1);
+    } else {
+      msgReactions[idx] = { ...msgReactions[idx], count: newCount };
+    }
+  }
+
+  updated[messageId] = msgReactions;
+  return updated;
 }
 
 export function useAddReaction() {
@@ -98,27 +81,28 @@ export function useAddReaction() {
   return useMutation({
     mutationFn: async ({ messageId, emoji }: { messageId: string; emoji: string }) => {
       const id = await addReaction(messageId, emoji);
-      pendingIds.add(id);
-      setTimeout(() => pendingIds.delete(id), 5000);
       return { id, messageId, emoji };
     },
-    onSuccess: ({ messageId, emoji }) => {
+    onMutate: async ({ messageId, emoji }) => {
+      await queryClient.cancelQueries({ queryKey: ["reactions"] });
+
+      const queries = queryClient.getQueriesData<Record<string, ReactionCount[]>>({ queryKey: ["reactions"] });
+      const snapshots = queries.map(([key, data]) => ({ key, data }));
+
       queryClient.setQueriesData<Record<string, ReactionCount[]>>(
         { queryKey: ["reactions"] },
-        (old) => {
-          if (!old) return old;
-          const updated = { ...old };
-          const msgReactions = [...(updated[messageId] || [])];
-          const idx = msgReactions.findIndex((r) => r.emoji === emoji);
-          if (idx >= 0) {
-            msgReactions[idx] = { ...msgReactions[idx], count: msgReactions[idx].count + 1 };
-          } else {
-            msgReactions.push({ emoji, count: 1 });
-          }
-          updated[messageId] = msgReactions;
-          return updated;
-        }
+        (old) => applyOptimistic(old, messageId, emoji, 1)
       );
+
+      return { snapshots };
+    },
+    onError: (_err, _vars, context) => {
+      context?.snapshots.forEach(({ key, data }) => {
+        queryClient.setQueryData(key, data);
+      });
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["reactions"] });
     },
   });
 }
@@ -127,32 +111,29 @@ export function useRemoveReaction() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ reactionId, messageId, emoji }: { reactionId: string; messageId: string; emoji: string }) => {
-      pendingIds.add(reactionId);
-      setTimeout(() => pendingIds.delete(reactionId), 5000);
+    mutationFn: async ({ reactionId }: { reactionId: string; messageId: string; emoji: string }) => {
       await removeReaction(reactionId);
-      return { messageId, emoji };
     },
-    onSuccess: ({ messageId, emoji }) => {
+    onMutate: async ({ messageId, emoji }) => {
+      await queryClient.cancelQueries({ queryKey: ["reactions"] });
+
+      const queries = queryClient.getQueriesData<Record<string, ReactionCount[]>>({ queryKey: ["reactions"] });
+      const snapshots = queries.map(([key, data]) => ({ key, data }));
+
       queryClient.setQueriesData<Record<string, ReactionCount[]>>(
         { queryKey: ["reactions"] },
-        (old) => {
-          if (!old) return old;
-          const updated = { ...old };
-          const msgReactions = [...(updated[messageId] || [])];
-          const idx = msgReactions.findIndex((r) => r.emoji === emoji);
-          if (idx >= 0) {
-            const newCount = msgReactions[idx].count - 1;
-            if (newCount <= 0) {
-              msgReactions.splice(idx, 1);
-            } else {
-              msgReactions[idx] = { ...msgReactions[idx], count: newCount };
-            }
-          }
-          updated[messageId] = msgReactions;
-          return updated;
-        }
+        (old) => applyOptimistic(old, messageId, emoji, -1)
       );
+
+      return { snapshots };
+    },
+    onError: (_err, _vars, context) => {
+      context?.snapshots.forEach(({ key, data }) => {
+        queryClient.setQueryData(key, data);
+      });
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["reactions"] });
     },
   });
 }
