@@ -24,6 +24,7 @@ export default async function DashboardLayout({
   const { data: recentBoards } = await supabase
     .from("boards")
     .select("id, title")
+    .eq("user_id", user?.id ?? "")
     .order("created_at", { ascending: false })
     .limit(5);
 
